@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
@@ -27,6 +28,7 @@ class HomeController extends Controller
     {
         $totalEmployees = Employee::count();
         $totalUsers = User::count();
-        return view('home', compact('totalEmployees', 'totalUsers'));
+        $user_login = Auth::user()->photo;
+        return view('home', compact('totalEmployees', 'totalUsers', 'user_login'));
     }
 }

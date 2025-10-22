@@ -68,17 +68,75 @@
     <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
     <script>
         $(document).ready(function() {
+            // PIC List
             $('#tablePic').DataTable({
                 pageLength: 5,
-                lengthMenu: [5, 10, 20],
-                pagingType: "full_numbers",
+                dom: '<"d-flex justify-content-between"f>rtip',
+                initComplete: function(settings, json) {
+                    const wrapper = $('#tablePic_wrapper');
+                    const title = $('<h6 class="fw-bold mb-0 text-success pt-2">PIC List</h6>');
+                    wrapper.find('div.d-flex').prepend(title);
+                }
             });
 
+            // Absent List
             $('#tableAbsent').DataTable({
                 pageLength: 5,
-                lengthMenu: [5, 10, 20],
-                pagingType: "full_numbers",
+                dom: '<"d-flex justify-content-between"f>rtip',
+                initComplete: function(settings, json) {
+                    const wrapper = $('#tableAbsent_wrapper');
+                    const title = $('<h6 class="fw-bold mb-0 text-danger pt-2">Absent List</h6>');
+                    wrapper.find('div.d-flex').prepend(title);
+                }
             });
+
+            $(document).ready(function() {
+                const breadcrumbData = @json($breadcrumb ?? []);
+
+                $('#WiTable').DataTable({
+                    pageLength: 5,
+                    dom: '<"d-flex justify-content-between align-items-center"f>rtip',
+                    initComplete: function(settings, json) {
+                        const wrapper = $('#WiTable_wrapper');
+                        const flexContainer = wrapper.find('div.d-flex');
+
+                        const breadcrumb = $(
+                            '<nav aria-label="breadcrumb" class="mb-0"><ol class="breadcrumb mb-0"></ol></nav>'
+                        );
+                        const ol = breadcrumb.find('ol');
+
+                        ol.append(`
+                <li class="breadcrumb-item">
+                    <i class="bi bi-folder2"></i>
+                    <a href="{{ route('wi-document.index') }}">WI Document</a>
+                </li>
+            `);
+
+                        breadcrumbData.forEach((item, index) => {
+                            const isLast = index === breadcrumbData.length - 1;
+                            const icon = isLast ? 'bi-folder2' : 'bi-folder2';
+                            const active = isLast ? 'active" aria-current="page' : '';
+                            const url = isLast ? '#' :
+                                `{{ route('wi-document.index') }}?path=${encodeURIComponent(item.path)}`;
+
+                            ol.append(`
+                    <li class="breadcrumb-item ${active}">
+                        <i class="bi ${icon}"></i>
+                        ${isLast ? item.name : `<a href="${url}">${item.name}</a>`}
+                    </li>
+                `);
+                        });
+
+                        flexContainer.prepend(breadcrumb);
+
+                        flexContainer.css({
+                            'gap': '1rem',
+                            'flex-wrap': 'wrap'
+                        });
+                    }
+                });
+            });
+
         });
     </script>
     {{-- <script>
