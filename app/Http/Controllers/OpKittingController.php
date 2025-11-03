@@ -290,38 +290,28 @@ class OpKittingController extends Controller
     public function checkBatch(Request $request)
     {
         $batch = trim($request->input('batch'));
-        $type = strtoupper(trim($request->input('type')));
 
-        switch ($type) {
-            case 'WH':
-                $exists = DB::table('record_batch')
-                    ->where('batch_wh', $batch)
-                    ->exists();
-                break;
+        // Cek di tabel record_batch (WH)
+        $existsWH = DB::table('record_batch')
+            ->where('batch_wh', $batch)
+            ->exists();
 
-            case 'SMD':
-                $exists = DB::table('record_batch_smd')
-                    ->where('batch_smd', $batch)
-                    ->exists();
-                break;
+        // Cek di tabel record_batch_smd
+        $existsSMD = DB::table('record_batch_smd')
+            ->where('batch_smd', $batch)
+            ->exists();
 
-            case 'STO':
-                $exists = DB::table('record_batch_sto')
-                    ->where('batch_sto', $batch)
-                    ->exists();
-                break;
+        // Cek di tabel record_batch_sto
+        $existsSTO = DB::table('record_batch_sto')
+            ->where('batch_sto', $batch)
+            ->exists();
 
-            case 'MAR':
-                // MAR tidak perlu cek batch di tabel lain
-                $exists = DB::table('record_batch_mar')
-                    ->where('batch_mar', $batch)
-                    ->exists();
-                break;
+        $existsMAR = DB::table('record_batch_mar')
+            ->where('batch_mar', $batch)
+            ->exists();
 
-            default:
-                $exists = false;
-                break;
-        }
+        // Jika salah satu ada
+        $exists = $existsWH || $existsSMD || $existsSTO || $existsMAR;
 
         return response()->json(['status' => $exists ? 'duplicate' : 'ok']);
     }
