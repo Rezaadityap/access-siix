@@ -29,12 +29,23 @@ Route::middleware(['auth'])->group(function () {
         ->name('wi-document.view');
 
     Route::get('/op-kitting', [OpKittingController::class, 'index'])->name('op-kitting.index');
+    Route::get('/record-history', [OpKittingController::class, 'history'])->name('op-kitting.history');
+    Route::post('/op-kitting/history/replace/{id}', [OpKittingController::class, 'replace'])->name('op-kitting.history.replace');
+
 
     Route::post('/record_material/store', [OpKittingController::class, 'store'])->name('record-material.store');
     Route::post('/record-material/upload', [OpKittingController::class, 'upload'])->name('record-material.upload');
     Route::get('/record_material/by-po/{po_numbers}', [OpKittingController::class, 'getRecord'])
         ->name('record-material.by-po');
     Route::get('/record_material/getSearchRecord', [OpKittingController::class, 'getRecordSearch'])->name('record-material.getSearch');
+    Route::post('/record_material/check-material', [OpKittingController::class, 'checkMaterial'])->name('record-material.checkMaterialRecord');
+    Route::post('/record_material/store-wh', [OpKittingController::class, 'saveWhMaterial'])->name('record-material.saveWh');
+    Route::post('/record_material/store-smd', [OpKittingController::class, 'saveRackSmd'])->name('record-material.saveSmd');
+    Route::post('/record_material/store-sto', [OpKittingController::class, 'saveRackSto'])->name('record-material.saveSto');
+    Route::post('/record_material/store-mar', [OpKittingController::class, 'saveAfter'])->name('record-material.saveMar');
+    Route::post('/record_material/check-batch', [OpKittingController::class, 'checkBatch'])->name('record-material.check-batch');
+    Route::get('/record-material/history', [OpKittingController::class, 'getBatchHistory']);
+    Route::post('/record_material/delete-po', [OpKittingController::class, 'deletePO']);
 });
 
 Route::get('/sync-employees', function () {
