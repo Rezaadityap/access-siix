@@ -27,6 +27,24 @@
                 </li>
             </ul>
         </li>
+        <li class="nav-item">
+            <a class="nav-link collapsed" data-bs-target="#reports" data-bs-toggle="collapse" href="#">
+                <i class="bi bi-file-earmark"></i><span>Reports Production</span><i
+                    class="bi bi-chevron-down ms-auto"></i>
+            </a>
+            <ul id="reports" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+                <li>
+                    <a href="{{ route('reports.kitting') }}">
+                        <i class="bi bi-circle"></i><span>Reports Kitting</span>
+                    </a>
+                </li>
+                {{-- <li>
+                    <a href="{{ route('reports-wi.index') }}">
+                        <i class="bi bi-circle"></i><span>Reports WI</span>
+                    </a>
+                </li> --}}
+            </ul>
+        </li>
         <!-- End Components Nav -->
 
         @if (Auth::user()->employee->department == 'IT')

@@ -1,4 +1,7 @@
 @extends('layouts.app')
+@section('title')
+    Record History
+@endsection
 
 @section('content')
     <main class="main" id="main">
@@ -64,6 +67,7 @@
                                             <th>Part Number</th>
                                             <th>Part Description</th>
                                             <th>Required Qty</th>
+                                            <th>Remarks</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -79,6 +83,7 @@
                                                 <td>{{ $item->material }}</td>
                                                 <td>{{ $item->material_desc }}</td>
                                                 <td>{{ $item->rec_qty }}</td>
+                                                <td>{{ $item->remarks }}</td>
                                                 <td>
                                                     <button type="button" class="btn btn-danger btn-sm btn-delete"
                                                         style="padding: 0.1rem 0.35rem; font-size: 0.7rem;"
@@ -135,6 +140,11 @@
                             <div class="mb-3">
                                 <label>Required Qty</label>
                                 <input type="number" name="rec_qty" id="newQty" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Note Remarks</label>
+                                <input type="text" name="remarks" id="remarks" class="form-control"
+                                    placeholder="Input note remarks" required>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -278,6 +288,7 @@
                         <td>${newData.material}</td>
                         <td>${newData.material_desc}</td>
                         <td>${newData.rec_qty}</td>
+                        <td>${newData.remarks ?? ''}</td>
                         <td>
                             <button type="button" class="btn btn-danger btn-sm btn-delete"
                                 style="padding: 0.1rem 0.35rem; font-size: 0.7rem;"

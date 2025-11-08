@@ -16,6 +16,7 @@ class RecordMaterialTrans extends Model
         'po_number',
         'model',
         'lot_size',
-        'act_lot_size'
+        'act_lot_size',
+        'group_id'
     ];
 }

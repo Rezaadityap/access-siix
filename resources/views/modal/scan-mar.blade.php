@@ -25,8 +25,30 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <input type="number" id="actualLotSize" class="form-control"
-                                    placeholder="Enter the actual lot size">
+                                <div class="d-flex align-items-center">
+                                    <label for="actualLotSize" class="fw-bold" style="width: 150px;">Actual Lot
+                                        Size</label>
+                                    <div class="p-2">:</div>
+                                    <input type="number" id="actualLotSize" class="form-control"
+                                        placeholder="Enter the actual lot size">
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <label for="cavity" class="fw-bold" style="width: 200px;">Cavity</label>
+                                    <div class="p-2">:</div>
+                                    <input type="number" id="cavity" class="form-control"
+                                        placeholder="Enter the cavity">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <label for="change_model" class="fw-bold" style="width: 200px">Change Model</label>
+                                    <div class="p-2">:</div>
+                                    <input type="number" id="change_model" class="form-control"
+                                        placeholder="Enter the change model">
+                                </div>
                             </div>
                             <div class="col-12">
                                 <div class="table-responsive">

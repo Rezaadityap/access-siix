@@ -273,7 +273,7 @@
             </div>
 
             <!-- Fullscreen Content -->
-            <div id="fullscreenContainer">
+            <div id="fullscreenContainer" style="display: none">
                 <div class="container-fluid h-100 p-0">
                     <div class="d-flex flex-nowrap h-100">
 
@@ -333,6 +333,12 @@
     </main>
     @push('script')
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <script>
+            if (window.pdfjsLib) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+            }
+        </script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 // ====== Fungsi Local Storage ======
@@ -546,7 +552,7 @@
                         row.dataset.path = file.path;
                         row.innerHTML = `
             <td>${file.name}</td>
-            <td>
+            <td class="text-end">
                 <a href="#" class="btn btn-sm btn-danger remove-file" data-path="${file.path}">Remove</a>
                 <button type="button" class="btn btn-sm btn-primary view-file" data-path="${baseUrl}/${encodeURI(file.path)}">View</button>
             </td>`;
@@ -778,7 +784,6 @@
                             currentPage = 1;
                         }
 
-                        // 🔹 Render halaman saat ini
                         const page = await pdfDoc.getPage(currentPage);
                         const containerWidth = pdfCanvas.parentElement.clientWidth;
                         const containerHeight = pdfCanvas.parentElement.clientHeight;
@@ -786,23 +791,27 @@
                         const unscaledViewport = page.getViewport({
                             scale: 1
                         });
-                        const scale = Math.min(
-                            containerWidth / unscaledViewport.width,
-                            containerHeight / unscaledViewport.height
-                        );
+
+                        let scale = containerHeight / unscaledViewport.height;
+                        const scaledWidth = unscaledViewport.width * scale;
+                        if (scaledWidth > containerWidth) {
+                            scale = containerWidth / unscaledViewport.width;
+                        }
+
                         const viewport = page.getViewport({
                             scale
                         });
 
-                        pdfCanvas.width = viewport.width;
-                        pdfCanvas.height = viewport.height;
+                        const dpr = window.devicePixelRatio || 1;
+                        pdfCanvas.width = Math.floor(viewport.width * dpr);
+                        pdfCanvas.height = Math.floor(viewport.height * dpr);
+                        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
                         await page.render({
                             canvasContext: ctx,
                             viewport
                         }).promise;
 
-                        // 🔹 Animasi masuk
                         pdfCanvas.style.transform = direction === 'right' ? "translateX(100%)" :
                             "translateX(-100%)";
                         pdfCanvas.style.opacity = "0";
@@ -825,11 +834,9 @@
                     if (selectedFiles.length === 0 || isTransitioning) return;
 
                     if (pdfDoc && currentPage < totalPages) {
-                        // Halaman berikut dalam file yang sama
                         currentPage++;
                         renderPDF(selectedFiles[currentIndex], 'right');
                     } else {
-                        // File berikut
                         currentIndex = (currentIndex + 1) % selectedFiles.length;
                         pdfDoc = null;
                         renderPDF(selectedFiles[currentIndex], 'right');

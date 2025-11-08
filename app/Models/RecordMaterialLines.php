@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\PriceController;
 use Illuminate\Database\Eloquent\Model;
 
 class RecordMaterialLines extends Model
@@ -23,5 +24,10 @@ class RecordMaterialLines extends Model
     public function recordMaterialTrans()
     {
         return $this->belongsTo(RecordMaterialTrans::class, 'record_material_trans_id');
+    }
+
+    public function prices()
+    {
+        return $this->hasMany(PriceController::class, 'record_material_lines_id');
     }
 }

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\OpKittingController;
+use App\Http\Controllers\PriceController;
+use App\Http\Controllers\ReportsKittingController;
 use App\Http\Controllers\WiDocumentController;
 use App\Models\Employee;
 use App\Models\ExternalEmployee;
@@ -32,7 +34,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/record-history', [OpKittingController::class, 'history'])->name('op-kitting.history');
     Route::post('/op-kitting/history/replace/{id}', [OpKittingController::class, 'replace'])->name('op-kitting.history.replace');
 
-
     Route::post('/record_material/store', [OpKittingController::class, 'store'])->name('record-material.store');
     Route::post('/record-material/upload', [OpKittingController::class, 'upload'])->name('record-material.upload');
     Route::get('/record_material/by-po/{po_numbers}', [OpKittingController::class, 'getRecord'])
@@ -43,9 +44,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/record_material/store-smd', [OpKittingController::class, 'saveRackSmd'])->name('record-material.saveSmd');
     Route::post('/record_material/store-sto', [OpKittingController::class, 'saveRackSto'])->name('record-material.saveSto');
     Route::post('/record_material/store-mar', [OpKittingController::class, 'saveAfter'])->name('record-material.saveMar');
+    Route::post('/record_material/store-mismatch', [OpKittingController::class, 'saveMismatch'])->name('record-material.saveMismatch');
     Route::post('/record_material/check-batch', [OpKittingController::class, 'checkBatch'])->name('record-material.check-batch');
     Route::get('/record-material/history', [OpKittingController::class, 'getBatchHistory']);
     Route::post('/record_material/delete-po', [OpKittingController::class, 'deletePO']);
+
+    Route::match(['GET', 'POST'], '/reports/kitting', [ReportsKittingController::class, 'index'])->name('reports.kitting');
+    Route::post('/reports-kitting/material_lines', [ReportsKittingController::class, 'materials'])->name('reports.kitting.materials');
+    Route::post('/reports-kitting/export', [ReportsKittingController::class, 'export'])
+        ->name('reports.kitting.export');
 });
 
 Route::get('/sync-employees', function () {
@@ -80,3 +87,6 @@ Route::get('/sync-employees', function () {
     }
     return 'Employees synced successfully!';
 });
+
+Route::get('/upload', [PriceController::class, 'index']);
+Route::post('/upload-file', [PriceController::class, 'upload'])->name('upload-price');

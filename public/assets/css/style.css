@@ -68,14 +68,17 @@ body,
 }
 
 #fullscreen-pdf-canvas {
-  width: 100%;
-  height: 100%;
   background: white;
   border: 1px solid #eee;
   transform: translateX(0);
   opacity: 1;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
   will-change: transform, opacity;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
 }
 
 /* === Table Layout === */
@@ -687,6 +690,23 @@ div #recordMaterial {
 
 .btn-gradient-custom:hover{
   background: linear-gradient(45deg, #ed9916, #2d81bf);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  color: white !important;
+}
+
+/* Purple Gradient */
+.btn-gradient-purple{
+  background: linear-gradient(45deg, #DC2424, #4A569D);
+  color: white !important;
+}
+
+.gradient-purple{
+  background: linear-gradient(45deg, #DC2424, #4A569D);
+  color: white !important;}
+
+.btn-gradient-purple:hover{
+  background: linear-gradient(45deg, #4A569D, #DC2424);
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
   color: white !important;
@@ -1553,6 +1573,26 @@ body.toggle-sidebar #big-toggle {
 .dashboard .top-selling img {
   border-radius: 5px;
   max-width: 60px;
+}
+
+th.sortable {
+  cursor: pointer;
+}
+
+th.sortable::after {
+  content: " ⇅";
+  opacity: .4;
+  font-size: .9em;
+}
+
+th.sort-asc::after {
+  content: " ▲";
+  opacity: 1;
+}
+
+th.sort-desc::after {
+  content: " ▼";
+  opacity: 1;
 }
 
 /*--------------------------------------------------------------

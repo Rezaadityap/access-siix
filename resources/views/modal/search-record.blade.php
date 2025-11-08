@@ -11,10 +11,13 @@
                         <div class="form-block border p-3 rounded mb-3">
                             <div class="row g-3">
                                 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                                    <div class="d-flex align-items-center">
-                                        <label for="searchDate" class="fw-semibold">Date:</label>
-                                        <input type="date" id="searchDate" class="form-control form-control-sm"
-                                            style="width: 180px;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label class="fw-semibold">Date Range:</label>
+                                        <input type="date" id="startDate" class="form-control form-control-sm"
+                                            style="width: 150px;">
+                                        <span class="fw-bold">to</span>
+                                        <input type="date" id="endDate" class="form-control form-control-sm"
+                                            style="width: 150px;">
                                     </div>
 
                                     <div class="d-flex align-items-center">

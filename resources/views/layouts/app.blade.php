@@ -9,6 +9,11 @@
     <meta content="" name="description">
     <meta content="" name="keywords">
 
+    {{-- Fetch JS --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="upload-url" content="{{ route('record-material.upload') }}">
+    <meta name="store-url" content="{{ route('record-material.store') }}">
+
     <!-- Favicons -->
     <link href="{{ asset('assets/img/logo/logo-siix.png') }}" rel="icon">
     <link href="{{ asset('assets/img/logo/logo-siix.png') }}" rel="apple-touch-icon">
