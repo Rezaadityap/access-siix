@@ -137,10 +137,7 @@
 <body>
 
     <div class="login-container">
-        <img src="{{ asset('assets/img/siix-access-banner.png') }}" alt="Siix Logo" class="logo">
-
-        <h1 class="title">SIIX ACCESS</h1>
-
+        <img src="{{ asset('assets/img/siix-access-banner.png') }}" alt="Siix Logo" class="logo" style="width: 300px">
         <form action="{{ route('login') }}" method="POST">
             @csrf
             <div class="form-group-wrapper mb-3">

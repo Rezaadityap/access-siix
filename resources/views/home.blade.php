@@ -1,7 +1,6 @@
 @extends('layouts.app')
-@section('title')
-    Home
-@endsection
+
+@section('title', 'Dashboard - Home')
 
 @section('content')
     <main id="main" class="main">
@@ -13,105 +12,166 @@
                     <li class="breadcrumb-item active">Dashboard</li>
                 </ol>
             </nav>
-        </div><!-- End Page Title -->
-
+        </div>
         <section class="section dashboard">
             <div class="row">
-
                 @if (Auth::user()->employee->department == 'IT')
-                    <!-- Left side columns -->
                     <div class="col-lg-12">
                         <div class="row">
-
-                            <!-- Sales Card -->
-                            <div class="col-xxl-6 col-md-12">
-                                <div class="card info-card sales-card">
+                            <div class="col-xxl-6 col-md-6 mb-4">
+                                <div class="card info-card shadow-lg border-0 h-100 transition-hover dashboard-card-blue">
                                     <div class="card-body">
-                                        <h5 class="card-title">Employees</h5>
-
-                                        <div class="d-flex align-items-center">
-                                            <div
-                                                class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                                                <i class="bi bi-people"></i>
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col me-2">
+                                                <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
+                                                    Total Pegawai Aktif
+                                                </div>
+                                                <div class="h5 mb-0 font-weight-bold text-white">
+                                                    {{ $totalEmployees }}
+                                                </div>
                                             </div>
-                                            <div class="ps-3">
-                                                <h6>{{ $totalEmployees }}</h6>
-                                                <span class="small pt-1">Active Employees</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div><!-- End Sales Card -->
-
-                            <!-- Customers Card -->
-                            <div class="col-xxl-6 col-md-12">
-
-                                <div class="card info-card customers-card">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Users</h5>
-
-                                        <div class="d-flex align-items-center">
-                                            <div
-                                                class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                                                <i class="bi bi-people"></i>
-                                            </div>
-                                            <div class="ps-3">
-                                                <h6>{{ $totalUsers }}</h6>
-                                                <span class="small pt-1">Active Users</span>
+                                            <div class="col-auto">
+                                                <i class="bi bi-people-fill fs-2 text-white opacity-75"></i>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
-                            <!-- End Customers Card -->
-                        </div>
-                    </div><!-- End Left side columns -->
-                @endif
-                <div class="col-xl-12">
 
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="tab-content">
-                                <div class="tab-pane fade show active profile-overview" id="profile-overview"
-                                    role="tabpanel">
-                                    <h5 class="card-title">Profile Details</h5>
-
-                                    <div class="row">
-                                        <div class="col-lg-6 col-md-4 fw-bold label">Employee Name</div>
-                                        <div class="col-lg-6 col-md-8">{{ Auth::user()->name }}</div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-6 col-md-4 fw-bold label">NIK</div>
-                                        <div class="col-lg-6 col-md-8">{{ Auth::user()->nik }}</div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-6 col-md-4 fw-bold label">Email</div>
-                                        <div class="col-lg-6 col-md-8">{{ Auth::user()->email }}</div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-6 col-md-4 fw-bold label">Department</div>
-                                        <div class="col-lg-6 col-md-8">{{ Auth::user()->employee->department }}</div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-6 col-md-4 fw-bold label">Section</div>
-                                        <div class="col-lg-6 col-md-8">{{ Auth::user()->employee->section }}</div>
+                            <div class="col-xxl-6 col-md-6 mb-4">
+                                <div class="card info-card shadow-lg border-0 h-100 transition-hover dashboard-card-orange">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col me-2">
+                                                <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
+                                                    Total Pengguna Sistem
+                                                </div>
+                                                <div class="h5 mb-0 font-weight-bold text-white">
+                                                    {{ $totalUsers }}
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="bi bi-person-badge-fill fs-2 text-white opacity-75"></i>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div><!-- End Bordered Tabs -->
-
+                            </div>
                         </div>
                     </div>
+                @endif
+                <div class="col-xl-12 mt-2">
+                    <div class="card mobile-profile-card shadow-xl border-0"
+                        style="border-radius: 2rem; overflow: hidden; background: linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%);">
+                        {{-- Card Body --}}
+                        <div class="card-body p-4 pt-4 text-dark">
+                            <div class="row align-items-start">
+                                <div class="col-md-4 text-center mb-4 mb-md-0">
+                                    {{-- Photo --}}
+                                    <div class="p-1 border border-3 border-orange rounded-circle mx-auto mb-3 shadow-sm"
+                                        style="width: 140px; height: 140px;">
+                                        <img src="{{ 'http://192.168.61.8/photos/employee/' . Auth::user()->employee->photo }}"
+                                            alt="Profile Photo" class="rounded-circle"
+                                            style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
+                                    </div>
 
+                                    <h4 class="mt-3 fw-bolder text-dark">{{ Auth::user()->name }}</h4>
+
+                                    {{-- Status Badge --}}
+                                    <span class="badge px-3 py-2 rounded-pill shadow-sm text-white"
+                                        style="background-color: #ff9800;">
+                                        <i class="bi bi-building me-1"></i> {{ Auth::user()->employee->department }}
+                                    </span>
+                                </div>
+
+                                <div class="col-md-8">
+                                    <h6 class="text-uppercase text-muted fw-bold mb-3">Employee Details</h6>
+
+                                    <div class="row g-3">
+                                        {{-- Detail Box --}}
+                                        <div class="col-sm-6">
+                                            <div class="detail-box p-3 rounded-xl border-0 shadow-sm"
+                                                style="background-color: rgba(255, 255, 255, 0.7); border-left: 5px solid #4e73df !important;">
+                                                <p class="text-primary small mb-0 fw-semibold">NIK</p>
+                                                <h5 class="fw-bold mb-0 text-dark">{{ Auth::user()->nik }}</h5>
+                                            </div>
+                                        </div>
+
+                                        {{-- Detail Box --}}
+                                        <div class="col-sm-6">
+                                            <div class="detail-box p-3 rounded-xl border-0 shadow-sm"
+                                                style="background-color: rgba(255, 255, 255, 0.7); border-left: 5px solid #1cc88a !important;">
+                                                <p class="text-success small mb-0 fw-semibold">Email</p>
+                                                <h6 class="fw-bold mb-0 text-dark text-truncate">{{ Auth::user()->email }}
+                                                </h6>
+                                            </div>
+                                        </div>
+
+                                        {{-- Detail Box --}}
+                                        <div class="col-sm-6">
+                                            <div class="detail-box p-3 rounded-xl border-0 shadow-sm"
+                                                style="background-color: rgba(255, 255, 255, 0.7); border-left: 5px solid #ff9800 !important;">
+                                                <p class="text-orange small mb-0 fw-semibold"
+                                                    style="color: #ff9800 !important;">Section</p>
+                                                <h5 class="fw-bold mb-0 text-dark">{{ Auth::user()->employee->section }}
+                                                </h5>
+                                            </div>
+                                        </div>
+
+                                        {{-- Detail Box --}}
+                                        <div class="col-sm-6">
+                                            <div class="detail-box p-3 rounded-xl border-0 shadow-sm"
+                                                style="background-color: rgba(255, 255, 255, 0.7); border-left: 5px solid #6c757d !important;">
+                                                <p class="text-secondary small mb-0 fw-semibold">Status</p>
+                                                <h5 class="fw-bold mb-0 text-dark">Active</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Card Footer --}}
+                        <div class="card-footer bg-white text-center p-3 border-0"
+                            style="border-bottom-left-radius: 2rem; border-bottom-right-radius: 2rem;">
+                            <p class="text-muted small mb-0">
+                                PT SIIX EMS INDONESIA
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
     </main>
-    <!-- End #main -->
+    <style>
+        .transition-hover {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .transition-hover:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .rounded-xl {
+            border-radius: 1rem !important;
+        }
+
+        .dashboard-card-blue {
+            background: linear-gradient(45deg, #4e73df 0%, #858796 100%);
+        }
+
+        .dashboard-card-orange {
+            background: linear-gradient(45deg, #f6c23e 0%, #f9845b 100%);
+        }
+
+        .border-orange {
+            border-color: #ff9800 !important;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+        }
+    </style>
 @endsection
