@@ -45,6 +45,17 @@
             border-top-right-radius: 12px;
         }
 
+        .login-container::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background-color: #ff9800;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
 
         .logo {
             width: 100px;
