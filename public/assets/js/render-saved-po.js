@@ -106,7 +106,7 @@ function renderSavedPO() {
             const status =
                 (item.rec_qty - item.smd_qty - item.receive_qty) * -1 +
                     item.sto_qty <
-                0
+                    0 || item.rec_qty === 0
                     ? '<span class="text-danger fw-bold">Shortage</span>'
                     : '<span class="text-success fw-bold">PASS</span>';
 
@@ -161,6 +161,7 @@ function renderSavedPO() {
         rows.sort((r1, r2) => {
             const a = getText(r1, col);
             const b = getText(r2, col);
+
             if (type === "number") {
                 const na = toNum(a),
                     nb = toNum(b);
@@ -168,14 +169,33 @@ function renderSavedPO() {
                 if (isNaN(na)) return 1;
                 if (isNaN(nb)) return -1;
                 return dir === "asc" ? na - nb : nb - na;
+            } else if (type === "status") {
+                const order = { Shortage: 1, PASS: 2 };
+                const va = order[a.toUpperCase()] || 99;
+                const vb = order[b.toUpperCase()] || 99;
+                return dir === "asc" ? va - vb : vb - va;
+            } else {
+                const aa = a.toLowerCase();
+                const bb = b.toLowerCase();
+                return dir === "asc"
+                    ? aa.localeCompare(bb, "en", { numeric: true })
+                    : bb.localeCompare(aa, "en", { numeric: true });
             }
-            return dir === "asc" ? a.localeCompare(b) : b.localeCompare(a);
         });
 
         rows.forEach((r) => tbody.appendChild(r));
-        // simpan state sort di dataset table (biar bisa direapply setelah re-render)
+        reindexTable();
         table.dataset.sortCol = String(col);
         table.dataset.sortDir = dir;
+    }
+
+    function reindexTable() {
+        const tbody = table.tBodies[0];
+        if (!tbody) return;
+        Array.from(tbody.rows).forEach((tr, idx) => {
+            const firstCell = tr.querySelector("td");
+            if (firstCell) firstCell.textContent = idx + 1;
+        });
     }
 
     // pasang listener ke th yang sortable
@@ -205,7 +225,6 @@ function renderSavedPO() {
             const th = table.querySelectorAll("thead th")[col];
             const type = th?.dataset?.type || "string";
             sortBy(col, type, dir);
-            // set indikator
             table
                 .querySelectorAll("thead th")
                 .forEach((h) => h.classList.remove("sort-asc", "sort-desc"));
