@@ -95,7 +95,6 @@ document.addEventListener("DOMContentLoaded", function () {
             console.warn(
                 `[initScanHandler] submit button "${submitBtnId}" not found — submit handler will be skipped.`
             );
-            // still continue — maybe submit is handled elsewhere
         }
 
         // cache untuk deteksi duplikat di sesi ini (cepat)
@@ -148,11 +147,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // ENTER handler: sekarang async, validasi lokal + cek duplikat DB sekali
-        $input.addEventListener("keydown", async function (e) {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-
-            const raw = this.value.trim();
+        // --- REPLACEMENT: input handling (Enter / input / paste) ---
+        // central processing function (reused by keydown, input, paste)
+        async function processScannedText(rawText) {
+            const raw = (rawText || "").trim();
             if (!raw) return;
 
             const currentPO = getCurrentPOFromDOM();
@@ -162,7 +160,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     title: "No PO Selected!",
                     text: "Please select or import file before scanning.",
                 });
-                this.value = "";
                 return;
             }
 
@@ -170,10 +167,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 .replace(/\r?\n|\r/g, " ")
                 .replace(/\s+/g, " ")
                 .trim();
+
             const codeRegex = /\[\)\>@[\s\S]*?@@/g;
             const codes = cleaned.match(codeRegex) || [cleaned];
 
-            this.value = "";
             const t0 = performance.now();
 
             let added = 0,
@@ -193,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     continue;
                 }
 
-                // validasi material pakai cache (instan)
+                // ensure material cache loaded
                 if (!MaterialCache.set.size) {
                     try {
                         await preloadMaterialsForPOs(
@@ -206,6 +203,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         // ignore preload error
                     }
                 }
+
                 if (!MaterialCache.set.has(parsed.material)) {
                     skippedMaterial++;
                     continue;
@@ -214,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 candidates.push(parsed);
             }
 
-            // cek duplikat DB sekali untuk semua kandidat (kecuali MAR yang boleh duplikat)
+            // cek duplikat DB sekali untuk semua kandidat (kecuali MAR)
             let dupDBSet = new Set();
             if (type !== "MAR" && candidates.length) {
                 const batchesToCheck = candidates.map((c) => c.batch);
@@ -237,7 +235,6 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log(
                 `Scan processed: +${added}, dupSession:${skippedDupSession}, dupDB:${skippedDupDB}, notInPO:${skippedMaterial} in ${dt}ms`
             );
-            $input.focus();
 
             // feedback ringan tanpa modal blocking
             const msg = [
@@ -260,6 +257,59 @@ document.addEventListener("DOMContentLoaded", function () {
                     position: "top-end",
                 });
             }
+        }
+
+        // keydown: tetap tetap support Enter (legacy)
+        $input.addEventListener("keydown", async function (e) {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            const raw = this.value || "";
+            this.value = "";
+            await processScannedText(raw);
+            this.focus();
+        });
+
+        // debounced input: proses otomatis saat pattern terpenuhi atau heuristik
+        const inputDebounced = (function () {
+            let t = null;
+            return function () {
+                clearTimeout(t);
+                t = setTimeout(async () => {
+                    const val = $input.value || "";
+                    // heuristik: jika ada pattern kode, atau panjang > 20 & mengandung '@', proses
+                    const cleaned = val
+                        .replace(/\r?\n|\r/g, " ")
+                        .replace(/\s+/g, " ")
+                        .trim();
+                    const codeRegex = /\[\)\>@[\s\S]*?@@/g;
+                    const hasPattern = !!cleaned.match(codeRegex);
+                    const heuristic =
+                        cleaned.length > 20 && cleaned.includes("@");
+                    if (hasPattern || heuristic) {
+                        $input.value = "";
+                        await processScannedText(cleaned);
+                        $input.focus();
+                    }
+                }, 120); // delay kecil supaya paste/typing selesai
+            };
+        })();
+        $input.addEventListener("input", inputDebounced);
+
+        // paste: proses segera (scanner that pastes)
+        $input.addEventListener("paste", function (e) {
+            // baca clipboard langsung jika tersedia
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pasted = clipboardData
+                ? clipboardData.getData("Text") || ""
+                : "";
+            setTimeout(async () => {
+                const val = pasted || $input.value || "";
+                if (val) {
+                    $input.value = "";
+                    await processScannedText(val);
+                    $input.focus();
+                }
+            }, 20);
         });
 
         // hapus baris
