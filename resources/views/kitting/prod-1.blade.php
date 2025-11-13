@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title')
-    OP Kitting
+    Kitting Production 1
 @endsection
 
 @section('content')
@@ -10,11 +10,11 @@
             <div class="container">
                 <div class="row">
                     <div class="pagetitle">
-                        <h1>OP Kitting</h1>
+                        <h1>Kitting Production 1</h1>
                         <nav>
                             <ol class="breadcrumb">
                                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                                <li class="breadcrumb-item active">OP Kitting</li>
+                                <li class="breadcrumb-item active">Kitting Production 1</li>
                             </ol>
                         </nav>
                     </div><!-- End Page Title -->
@@ -26,7 +26,7 @@
                                 </h4>
                                 <div class="d-grid gap-3">
                                     <button class="btn btn-gradient-info py-2 fw-bold rounded-3 shadow-sm"
-                                        data-bs-toggle="modal" data-bs-target="#poNumber">
+                                        data-bs-toggle="modal" data-bs-target="#poNumber" id="reset-po">
                                         <i class="bi bi-plus-circle me-2"></i> New PO Number
                                     </button>
                                     <button class="btn btn-gradient-success py-2 fw-bold rounded-3 shadow-sm"
@@ -64,14 +64,11 @@
                     <div class="col-lg-6 mx-auto">
                         <div class="card shadow-lg border-0 rounded-4">
                             <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h5 class="card-title fw-bolder gradient-text-primary mb-0 d-flex align-items-center">
+                                <div class="d-flex justify-content-center align-items-center mb-3">
+                                    <h5
+                                        class="card-title fw-bolder gradient-text-primary mb-0 d-flex align-items-center text-center">
                                         Record Material Information
                                     </h5>
-                                    <button class="btn btn-sm btn-danger text-white rounded-pill px-4 shadow-sm"
-                                        id="deletePO">
-                                        Delete
-                                    </button>
                                 </div>
                                 <hr class="mt-0 mb-4 text-muted">
                                 <form>
@@ -125,6 +122,16 @@
                                         </div>
                                     </div>
                                 </form>
+                                <div class="d-flex justify-content-center text-end gap-1">
+                                    <button data-bs-toggle="modal" data-bs-target="#editInformation"
+                                        class="btn btn-sm btn-gradient-success text-white rounded-pill px-4 shadow-sm">Edit</button>
+                                    <button class="btn btn-sm btn-gradient-danger text-white rounded-pill px-4 shadow-sm"
+                                        id="deletePO">
+                                        Delete
+                                    </button>
+                                    <button
+                                        class="btn btn-sm btn-gradient-primary text-white rounded-pill px-4 shadow-sm">Save</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -136,27 +143,26 @@
             @include('table.table-history-batch')
         </section>
         {{-- Modal Import PO --}}
-        @include('modal.import-po')
-        {{-- Modal search record material --}}
-        @include('modal.search-record')
-        {{-- Scan Rack SMD --}}
-        @include('modal.scan-rack-smd')
-        {{-- Modal scan WH Material --}}
-        @include('modal.scan-material')
+        @include('modal.kitting.import-kitting-prod1')
+        {{-- Modal Scan SMD --}}
+        @include('modal.kitting.scan-smd')
+        {{-- Modal Scan WH --}}
+        @include('modal.kitting.scan-wh')
         {{-- Modal Scan STO --}}
-        @include('modal.scan-sto')
+        @include('modal.kitting.scan-sto')
         {{-- Modal Scan MAR --}}
-        @include('modal.scan-mar')
-        {{-- Moda Scan Mismatch --}}
-        @include('modal.scan-mismatch')
+        @include('modal.kitting.scan-mar')
+        {{-- Modal search record material --}}
+        @include('modal.kitting.search-record')
+        {{-- Modal Scan Stock --}}
+        @include('modal.kitting.scan-stock')
     </main>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ asset('assets/js/render-saved-po.js') }}" defer></script>
-    <script src="{{ asset('assets/js/update-info-fields.js') }}" defer></script>
-    <script src="{{ asset('assets/js/history-load.js') }}" defer></script>
-    <script src="{{ asset('assets/js/import-po.js') }}" defer></script>
-    <script src="{{ asset('assets/js/search-po.js') }}" defer></script>
-    <script src="{{ asset('assets/js/init-po.js') }}" defer></script>
-    <script src="{{ asset('assets/js/scan-handler.js') }}" defer></script>
-    <script src="{{ asset('assets/js/copy-batch.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/import-kitting.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/render-save-records.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/update-info-fields.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/history-load.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/scan-handler.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/search-record.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/copy-batch.js') }}" defer></script>
 @endsection

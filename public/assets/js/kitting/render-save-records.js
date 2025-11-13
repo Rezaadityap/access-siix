@@ -1,22 +1,30 @@
-function renderSavedPO() {
-    console.log("%c[renderSavedPO] → Dipanggil", "color:cyan;");
+function renderSavedPOFromList(poList) {
+    console.log("%c[renderSavedPOFromList] → Dipanggil", "color:lightgreen;");
 
-    const saved = localStorage.getItem("currentPO");
-    if (!saved) {
-        console.log("[renderSavedPO] Tidak ada data di localStorage");
+    let normalized = [];
+    if (!poList) {
+        console.warn("[renderSavedPOFromList] poList kosong");
+        return;
+    }
+    if (!Array.isArray(poList)) {
+        poList = [poList];
+    }
+    poList.forEach((p) => {
+        if (typeof p === "string") normalized.push({ po_number: p });
+        else if (p && p.po_number) normalized.push({ po_number: p.po_number });
+    });
+
+    if (normalized.length === 0) {
+        console.warn("[renderSavedPOFromList] Tidak ada PO valid");
         $("#recordMaterials tbody").html(`
             <tr><td colspan="20" class="text-center text-muted">No Data Found</td></tr>
         `);
         return;
     }
 
-    const savedPOs = JSON.parse(saved);
-    const poList = Array.isArray(savedPOs) ? savedPOs : [savedPOs];
-    console.log("[renderSavedPO] PO list:", poList);
-
     let allLines = [];
 
-    const fetchPromises = poList.map((po) => {
+    const fetchPromises = normalized.map((po) => {
         const po_number = po.po_number;
         return $.ajax({
             url: `/record_material/by-po/${po_number}`,
@@ -28,13 +36,13 @@ function renderSavedPO() {
                     res.data.length > 0
                 ) {
                     console.log(
-                        `[renderSavedPO] Data diterima untuk PO ${po_number}:`,
+                        `[renderSavedPOFromList] Data diterima untuk PO ${po_number}:`,
                         res.data
                     );
                     allLines.push(...res.data);
                 } else {
                     console.warn(
-                        `[renderSavedPO] Tidak ada data untuk PO ${po_number}`
+                        `[renderSavedPOFromList] Tidak ada data untuk PO ${po_number}`
                     );
                 }
             },
@@ -49,13 +57,16 @@ function renderSavedPO() {
 
     Promise.all(fetchPromises).then(() => {
         if (allLines.length === 0) {
-            console.warn("[renderSavedPO] Tidak ada data valid dari semua PO");
+            console.warn(
+                "[renderSavedPOFromList] Tidak ada data valid dari semua PO"
+            );
             $("#recordMaterials tbody").html(`
                 <tr><td colspan="20" class="text-center text-muted">No Data Found</td></tr>
             `);
             return;
         }
 
+        // RE-USE grouping + rendering logic yang persis sama seperti di renderSavedPO
         const grouped = {};
         allLines.forEach((item) => {
             const key = item.material;
@@ -91,7 +102,6 @@ function renderSavedPO() {
         Object.values(grouped).forEach((item, i) => {
             const material = item.material;
 
-            // Ambil jumlah scan dari API
             const smdCount = item.smd_scans ?? 0;
             const whCount = item.wh_scans ?? 0;
             const stoCount = item.sto_scans ?? 0;
@@ -139,7 +149,7 @@ function renderSavedPO() {
 
         $("#recordMaterials tbody").html(rows);
         if (window.__reapplySort) window.__reapplySort();
-        console.log("[renderSavedPO] Table updated successfully.");
+        console.log("[renderSavedPOFromList] Table updated successfully.");
     });
 }
 (function () {

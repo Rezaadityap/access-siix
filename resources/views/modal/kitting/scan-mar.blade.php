@@ -2,7 +2,7 @@
 <div class="modal fade" id="scanMar" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content shadow-lg">
-            <div class="modal-header bg-warning text-white">
+            <div class="modal-header gradient-warning text-white">
                 <h5 class="modal-title fw-bold"><i class="bi bi-upc-scan me-2"></i>Scan Material After Running</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
@@ -13,7 +13,7 @@
                         <div class="row g-3">
                             <div class="col-12">
                                 <div class="input-group shadow-sm rounded-3">
-                                    <span class="input-group-text bg-warning text-white fw-bold border-0 p-3"
+                                    <span class="input-group-text gradient-warning text-white fw-bold border-0 p-3"
                                         id="sto-barcode-icon">
                                         <i class="bi bi-upc-scan fs-4"></i>
                                     </span>
@@ -53,8 +53,8 @@
                             <div class="col-12">
                                 <div class="table-responsive">
                                     <table class="table table-bordered align-middle text-center mb-0">
-                                        <thead class="table-warning">
-                                            <tr class="text-muted">
+                                        <thead class="gradient-warning">
+                                            <tr class="text-sm text-white">
                                                 <th>NO</th>
                                                 <th>SCAN CODE</th>
                                                 <th>MATERIAL CODE</th>
@@ -75,7 +75,7 @@
                     </div>
                     <div class="text-end">
                         <button type="button" id="submitScanMar"
-                            class="btn btn-warning text-white px-4 shadow-sm">Submit</button>
+                            class="btn btn-gradient-warning text-white px-4 shadow-sm">Submit</button>
                     </div>
                 </form>
             </div>

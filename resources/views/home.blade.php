@@ -20,13 +20,13 @@
                         <div class="row">
                             <div class="col-xxl-6 col-md-6 mb-4">
                                 <div class="card info-card shadow-lg border-0 h-100 transition-hover dashboard-card-blue">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
+                                    <div class="card-body p-4">
+                                        <div class="row d-flex align-items-center justify-content-center">
                                             <div class="col me-2">
-                                                <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
-                                                    Total Pegawai Aktif
+                                                <div class="text-sm fw-bold text-white text-uppercase mb-1">
+                                                    Total Active Employees
                                                 </div>
-                                                <div class="h5 mb-0 font-weight-bold text-white">
+                                                <div class="h5 mb-0 text-white">
                                                     {{ $totalEmployees }}
                                                 </div>
                                             </div>
@@ -40,13 +40,13 @@
 
                             <div class="col-xxl-6 col-md-6 mb-4">
                                 <div class="card info-card shadow-lg border-0 h-100 transition-hover dashboard-card-orange">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
+                                    <div class="card-body p-4">
+                                        <div class="row d-flex justify-content-center align-items-center">
                                             <div class="col me-2">
-                                                <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
-                                                    Total Pengguna Sistem
+                                                <div class="text-sm fw-bold text-white text-uppercase mb-1">
+                                                    Total System Users
                                                 </div>
-                                                <div class="h5 mb-0 font-weight-bold text-white">
+                                                <div class="h5 mb-0 text-white">
                                                     {{ $totalUsers }}
                                                 </div>
                                             </div>
@@ -159,7 +159,7 @@
         }
 
         .dashboard-card-blue {
-            background: linear-gradient(45deg, #4e73df 0%, #858796 100%);
+            background: linear-gradient(45deg, #4e73df 0%, #748DAE 100%);
         }
 
         .dashboard-card-orange {

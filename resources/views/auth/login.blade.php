@@ -146,7 +146,6 @@
 </head>
 
 <body>
-
     <div class="login-container">
         <img src="{{ asset('assets/img/siix-access-banner.png') }}" alt="Siix Logo" class="logo" style="width: 300px">
         <form action="{{ route('login') }}" method="POST">

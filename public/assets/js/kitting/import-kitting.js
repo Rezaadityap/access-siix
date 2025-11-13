@@ -178,15 +178,76 @@ $(document).ready(function () {
                                 timer: 1500,
                                 showConfirmButton: false,
                             }).then(() => {
-                                updateInfoFields(response.data);
-                                $("#searchRecords")
-                                    .DataTable()
-                                    .ajax.reload(null, false);
+                                try {
+                                    const data = Array.isArray(response.data)
+                                        ? response.data
+                                        : [];
 
-                                $("#poNumber").modal("hide");
-                                $("#importTable tbody").empty();
-                                $("#importFormWrapper")[0].reset();
-                                uploadedFiles = [];
+                                    // build safe poList (only items with po_number)
+                                    const poList = data
+                                        .map((r) => ({
+                                            po_number: r?.po_number,
+                                        }))
+                                        .filter(
+                                            (p) =>
+                                                p.po_number &&
+                                                p.po_number !== ""
+                                        );
+
+                                    if (poList.length) {
+                                        if (
+                                            typeof renderSavedPOFromList ===
+                                            "function"
+                                        ) {
+                                            renderSavedPOFromList(poList);
+                                        } else {
+                                            console.warn(
+                                                "renderSavedPOFromList not defined"
+                                            );
+                                        }
+                                    } else {
+                                        console.warn(
+                                            "[AJAX success] response.data kosong atau tidak berformat sesuai"
+                                        );
+                                    }
+
+                                    if (
+                                        typeof updateInfoFields === "function"
+                                    ) {
+                                        updateInfoFields(data);
+                                    } else {
+                                        console.warn(
+                                            "updateInfoFields not defined"
+                                        );
+                                    }
+
+                                    // reload datatable only if initialized
+                                    if (
+                                        $.fn.DataTable &&
+                                        $.fn.DataTable.isDataTable(
+                                            "#searchRecords"
+                                        )
+                                    ) {
+                                        $("#searchRecords")
+                                            .DataTable()
+                                            .ajax.reload(null, false);
+                                    }
+
+                                    // OPTIONAL: reapply sort if you rely on it
+                                    if (window.__reapplySort)
+                                        window.__reapplySort();
+                                } catch (err) {
+                                    console.error(
+                                        "Error handling success response:",
+                                        err
+                                    );
+                                } finally {
+                                    // cleanup UI upload
+                                    $("#poNumber").modal("hide");
+                                    $("#importTable tbody").empty();
+                                    $("#importFormWrapper")[0].reset();
+                                    uploadedFiles = [];
+                                }
                             });
                         } else if (response.status === "duplicate") {
                             Swal.fire({
@@ -220,72 +281,5 @@ $(document).ready(function () {
                 });
             }
         });
-    });
-    // reset po number
-    $("#poNumber").on("show.bs.modal", function (e) {
-        const currentPO = localStorage.getItem("currentPO");
-        if (currentPO) {
-            e.preventDefault();
-
-            Swal.fire({
-                title: "Active PO Number!",
-                html: `You need to clear the PO number. Do you want to clear?`,
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#d33",
-                cancelButtonColor: "#6c757d",
-                confirmButtonText: "Yes, Reset!",
-                cancelButtonText: "Cancel",
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        title: "Cleaning",
-                        text: "Please wait a moment.",
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading(),
-                    });
-
-                    setTimeout(() => {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Succeeded",
-                            text: "PO data has been successfully cleaned.",
-                            timer: 800,
-                            showConfirmButton: false,
-                        });
-
-                        localStorage.removeItem("currentPO");
-                        $("#recordMaterials tbody").html(
-                            `<tr><td colspan="20" class="text-center text-muted">No Data Found</td></tr>`
-                        );
-                        $(
-                            "#recordScanWH tbody, #recordScanSMD tbody, #recordScanMAR tbody"
-                        ).html(
-                            `<tr><td colspan="5" class="text-center text-muted">No Data Found</td></tr>`
-                        );
-                        $("#infoContainer").empty();
-                        $(
-                            "#infoProduction, #infoLine, #infoLotSize, #infoActual, #infoDate"
-                        ).val("");
-
-                        $("#searchRecords .btn-custom").each(function () {
-                            $(this)
-                                .prop("disabled", false)
-                                .text("Select")
-                                .removeClass("btn-danger")
-                                .addClass("btn-primary");
-                        });
-
-                        console.log(
-                            "[resetPoButton] Semua localStorage dihapus."
-                        );
-
-                        $("#poNumber").modal("show");
-                    }, 800);
-                } else {
-                    Swal.close();
-                }
-            });
-        }
     });
 });

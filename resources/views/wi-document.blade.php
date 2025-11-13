@@ -816,12 +816,12 @@
                             "translateX(-100%)";
                         pdfCanvas.style.opacity = "0";
 
-                        pdfCanvas.offsetHeight; // reflow
+                        pdfCanvas.offsetHeight;
 
                         pdfCanvas.style.transform = "translateX(0)";
                         pdfCanvas.style.opacity = "1";
 
-                        await new Promise(resolve => setTimeout(resolve, 600));
+                        await new Promise(resolve => setTimeout(resolve, 15000));
 
                         isTransitioning = false;
                     } catch (err) {

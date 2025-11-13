@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\IT\UsersController;
+use App\Http\Controllers\KittingController;
 use App\Http\Controllers\OpKittingController;
 use App\Http\Controllers\PriceController;
 use App\Http\Controllers\ReportsKittingController;
@@ -20,20 +22,21 @@ Auth::routes();
 
 Route::middleware(['auth'])->group(function () {
 
+    // Dashboard
     Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
+    // WI Document
     Route::get('/wi-document/{path?}', [WiDocumentController::class, 'index'])
         ->where('path', '.*')
         ->name('wi-document.index');
-
     Route::get('/wi-documents/view/{path}', [WiDocumentController::class, 'view'])
         ->where('path', '.*')
         ->name('wi-document.view');
 
-    Route::get('/op-kitting', [OpKittingController::class, 'index'])->name('op-kitting.index');
+    // Kitting
+    Route::get('/kitting/prod1', [OpKittingController::class, 'kitting_prod1'])->name('kitting.prod1');
     Route::get('/record-history', [OpKittingController::class, 'history'])->name('op-kitting.history');
     Route::post('/op-kitting/history/replace/{id}', [OpKittingController::class, 'replace'])->name('op-kitting.history.replace');
-
     Route::post('/record_material/store', [OpKittingController::class, 'store'])->name('record-material.store');
     Route::post('/record-material/upload', [OpKittingController::class, 'upload'])->name('record-material.upload');
     Route::get('/record_material/by-po/{po_numbers}', [OpKittingController::class, 'getRecord'])
@@ -48,11 +51,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/record_material/check-batch', [OpKittingController::class, 'checkBatch'])->name('record-material.check-batch');
     Route::get('/record-material/history', [OpKittingController::class, 'getBatchHistory']);
     Route::post('/record_material/delete-po', [OpKittingController::class, 'deletePO']);
-
+    Route::put('/op-kitting/update-info', [OpKittingController::class, 'updateInfo'])->name('op-kitting.update-info');
     Route::match(['GET', 'POST'], '/reports/kitting', [ReportsKittingController::class, 'index'])->name('reports.kitting');
     Route::post('/reports-kitting/material_lines', [ReportsKittingController::class, 'materials'])->name('reports.kitting.materials');
     Route::post('/reports-kitting/export', [ReportsKittingController::class, 'export'])
         ->name('reports.kitting.export');
+    Route::get('/reports/batches', [ReportsKittingController::class, 'batches'])->name('reports.kitting.batches');
+    Route::get('/reports/batches/export', [ReportsKittingController::class, 'exportBatches'])
+        ->name('reports.batches.export');
+
+
+    // ROUTE FOR IT
+    Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 });
 
 Route::get('/sync-employees', function () {

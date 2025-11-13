@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GroupRecords;
-use App\Models\RecordBatch;
 use App\Models\RecordMaterialLines;
 use App\Models\RecordMaterialTrans;
 use Carbon\Carbon;
@@ -17,9 +15,9 @@ use Illuminate\Validation\Rule;
 
 class OpKittingController extends Controller
 {
-    public function index()
+    public function kitting_prod1()
     {
-        return view('op-kitting');
+        return view('kitting.prod-1');
     }
 
     public function store(Request $request)

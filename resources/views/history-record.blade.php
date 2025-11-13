@@ -10,7 +10,7 @@
             <nav>
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('op-kitting.index') }}">Op Kitting</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('kitting.prod1') }}">Kitting Production 1</a></li>
                     <li class="breadcrumb-item active">Record History</li>
                 </ol>
             </nav>

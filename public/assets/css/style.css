@@ -729,6 +729,10 @@ div #recordMaterial {
   background: linear-gradient(45deg, #0d6efd, #6610f2);
 }
 
+.gradient-primary {
+    background: linear-gradient(45deg, #0d6efd, #6610f2);
+}
+
 .btn-gradient-primary:hover {
   background: linear-gradient(45deg, #6610f2, #0d6efd);
   transform: translateY(-2px);
@@ -739,6 +743,10 @@ div #recordMaterial {
 /* SUCCESS Gradient */
 .btn-gradient-success {
   background: linear-gradient(45deg, #198754, #28a745);
+}
+
+.gradient-success {
+  background: linear-gradient(45deg, #198754,#28a745);
 }
 
 .btn-gradient-success:hover {
@@ -753,6 +761,10 @@ div #recordMaterial {
   background: linear-gradient(45deg, #dc3545, #fd7e14);
 }
 
+.gradient-danger {
+  background: linear-gradient(45deg, #dc3545, #fd7e14);
+}
+
 .btn-gradient-danger:hover {
   background: linear-gradient(45deg, #fd7e14, #dc3545);
   transform: translateY(-2px);
@@ -763,6 +775,10 @@ div #recordMaterial {
 
 /* WARNING Gradient */
 .btn-gradient-warning {
+  background: linear-gradient(45deg, #ffc107, #fd7e14);
+}
+
+.gradient-warning {
   background: linear-gradient(45deg, #ffc107, #fd7e14);
 }
 
