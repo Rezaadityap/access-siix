@@ -12,7 +12,7 @@
                         </button>
                     </div>
                     <div class="row collapse" style="margin-right: -8px; margin-left: -8px;" id="collapseHistory">
-                        <div class="col-md-6 px-2" id="copy">
+                        <div class="col-md-6 px-2">
                             <div class="border rounded p-3 h-100">
                                 <div class="row">
                                     <div class="col-12">
@@ -20,11 +20,6 @@
                                             <h6 class="fw-bold gradient-text-primary mb-2" style="font-size: 0.84em">SMD
                                                 Record
                                             </h6>
-                                            <a href="#"
-                                                class="copyBatchBtn text-secondary text-decoration-none small d-flex align-items-center">
-                                                <i class="bi bi-clipboard me-1" style="font-size: 0.9em;"></i>
-                                                <span>Copy batch</span>
-                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -50,7 +45,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 px-2" id="copy">
+                        <div class="col-md-6 px-2">
                             <div class="border rounded p-3 h-100">
                                 <div class="row">
                                     <div class="col-12">
@@ -58,11 +53,6 @@
                                             <h6 class="fw-bold gradient-text-primary mb-2" style="font-size: 0.84em">WH
                                                 Record
                                             </h6>
-                                            <a href="#"
-                                                class="copyBatchBtn text-secondary text-decoration-none small d-flex align-items-center">
-                                                <i class="bi bi-clipboard me-1" style="font-size: 0.9em;"></i>
-                                                <span>Copy batch</span>
-                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -88,7 +78,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 px-2 mt-3" id="copy">
+                        <div class="col-md-6 px-2 mt-3">
                             <div class="border rounded p-3 h-100">
                                 <div class="row">
                                     <div class="col-12">
@@ -96,11 +86,6 @@
                                             <h6 class="fw-bold gradient-text-primary mb-2" style="font-size: 0.84em">STO
                                                 Record
                                             </h6>
-                                            <a href="#"
-                                                class="copyBatchBtn text-secondary text-decoration-none small d-flex align-items-center">
-                                                <i class="bi bi-clipboard me-1" style="font-size: 0.9em;"></i>
-                                                <span>Copy batch</span>
-                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -126,7 +111,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 px-2 mt-3" id="copy">
+                        <div class="col-md-6 px-2 mt-3">
                             <div class="border rounded p-3 h-100">
                                 <div class="row">
                                     <div class="col-12">
@@ -135,11 +120,6 @@
                                                 Material After Running
                                                 Record
                                             </h6>
-                                            <a href="#"
-                                                class="copyBatchBtn text-secondary text-decoration-none small d-flex align-items-center">
-                                                <i class="bi bi-clipboard me-1" style="font-size: 0.9em;"></i>
-                                                <span>Copy batch</span>
-                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -165,19 +145,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-12 px-2 mt-3" id="copy">
+                        <div class="col-md-12 px-2 mt-3">
                             <div class="border rounded p-3 h-100">
                                 <div class="row">
                                     <div class="col-12">
                                         <div class="d-flex justify-content-between items-center">
                                             <h6 class="fw-bold gradient-text-primary mb-2" style="font-size: 0.84em">
-                                                Mismatch Record
+                                                Stock Record
                                             </h6>
-                                            <a href="#"
-                                                class="copyBatchBtn text-secondary text-decoration-none small d-flex align-items-center">
-                                                <i class="bi bi-clipboard me-1" style="font-size: 0.9em;"></i>
-                                                <span>Copy batch</span>
-                                            </a>
                                         </div>
                                     </div>
                                 </div>

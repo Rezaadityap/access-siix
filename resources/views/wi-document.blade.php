@@ -53,6 +53,7 @@
                                         <table class="table" id="selectedPicTable">
                                             <thead>
                                                 <tr class="font-custom">
+                                                    <th>NIK</th>
                                                     <th>Name</th>
                                                     <th>Department</th>
                                                     <th>Action</th>
@@ -60,7 +61,7 @@
                                             </thead>
                                             <tbody>
                                                 <tr class="text-center font-custom">
-                                                    <td colspan="3">No PIC selected</td>
+                                                    <td colspan="4">No PIC selected</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -73,6 +74,7 @@
                                         <table class="table" id="selectedAbsentTable">
                                             <thead>
                                                 <tr class="font-custom">
+                                                    <th>NIK</th>
                                                     <th>Name</th>
                                                     <th>Department</th>
                                                     <th>Action</th>
@@ -80,7 +82,7 @@
                                             </thead>
                                             <tbody>
                                                 <tr class="text-center font-custom">
-                                                    <td colspan="3">No Absent selected</td>
+                                                    <td colspan="4">No Absent selected</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -332,6 +334,86 @@
         </section>
     </main>
     @push('script')
+        <script>
+            $(document).ready(function() {
+                // PIC List
+                $('#tablePic').DataTable({
+                    pageLength: 5,
+                    dom: '<"d-flex justify-content-between"f>rtip',
+                    initComplete: function(settings, json) {
+                        const wrapper = $('#tablePic_wrapper');
+                        const title = $('<h6 class="fw-bold mb-0 text-success pt-2">PIC List</h6>');
+                        wrapper.find('div.d-flex').prepend(title);
+                    }
+                });
+
+                // Absent List
+                $('#tableAbsent').DataTable({
+                    pageLength: 5,
+                    dom: '<"d-flex justify-content-between"f>rtip',
+                    initComplete: function(settings, json) {
+                        const wrapper = $('#tableAbsent_wrapper');
+                        const title = $('<h6 class="fw-bold mb-0 text-danger pt-2">Absent List</h6>');
+                        wrapper.find('div.d-flex').prepend(title);
+                    }
+                });
+
+                $(document).ready(function() {
+                    const breadcrumbData = @json($breadcrumb ?? []);
+
+                    $('#WiTable').DataTable({
+                        pageLength: 5,
+                        dom: '<"d-flex justify-content-between align-items-center"f>rtip',
+                        initComplete: function(settings, json) {
+                            const wrapper = $('#WiTable_wrapper');
+                            const flexContainer = wrapper.find('div.d-flex');
+
+                            const breadcrumb = $(
+                                '<nav aria-label="breadcrumb" class="mb-0"><ol class="breadcrumb mb-0"></ol></nav>'
+                            );
+                            const ol = breadcrumb.find('ol');
+
+                            ol.append(`
+                                <li class="breadcrumb-item">
+                                    <i class="bi bi-folder2"></i>
+                                    <a href="{{ route('wi-document.index') }}">WI Document</a>
+                                </li>
+                            `);
+
+                            breadcrumbData.forEach((item, index) => {
+                                const isLast = index === breadcrumbData.length - 1;
+                                const icon = 'bi-folder2';
+                                const active = isLast ? 'active' : '';
+
+                                const rawPath = (item.path || '').replace(/^\/+|\/+$/g, '');
+                                const encodedPath = rawPath ?
+                                    rawPath.split('/').map(seg => encodeURIComponent(seg))
+                                    .join('/') :
+                                    '';
+
+                                const url = isLast ? '#' : `{{ url('wi-document') }}` + (
+                                    encodedPath ? `/${encodedPath}` : '');
+
+                                ol.append(`
+                                    <li class="breadcrumb-item ${active}" ${isLast ? 'aria-current="page"' : ''}>
+                                        <i class="bi ${icon}"></i>
+                                        ${isLast ? item.name : `<a href="${url}">${item.name}</a>`}
+                                    </li>
+                                `);
+                            });
+
+                            flexContainer.prepend(breadcrumb);
+
+                            flexContainer.css({
+                                'gap': '1rem',
+                                'flex-wrap': 'wrap'
+                            });
+                        }
+                    });
+                });
+
+            });
+        </script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
         <script>
             if (window.pdfjsLib) {
@@ -341,7 +423,6 @@
         </script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                // ====== Fungsi Local Storage ======
                 function saveToLocalStorage(key, data) {
                     localStorage.setItem(key, JSON.stringify(data));
                 }
@@ -351,11 +432,11 @@
                     return data ? JSON.parse(data) : [];
                 }
 
-                // ====== Global State ======
+                // State
                 window.selectedPic = new Map(loadFromLocalStorage('selectedPic').map(item => [item.id, item]));
                 window.selectedAbsent = new Map(loadFromLocalStorage('selectedAbsent').map(item => [item.id, item]));
 
-                // ====== Elemen DOM ======
+                // Variabel dom
                 const selectedPicTable = document.querySelector('#selectedPicTable tbody');
                 const selectedAbsentTable = document.querySelector('#selectedAbsentTable tbody');
                 const picList = document.getElementById('picList');
@@ -364,14 +445,14 @@
                 const selectedFileTableBody = document.querySelector('.selected-files tbody');
                 const btnReset = document.getElementById('btn-reset');
 
-                // ====== Helper Function ======
+                // Helper refresh
                 function refreshEmptyState(table, message) {
                     if (table.children.length === 0) {
-                        table.innerHTML = `<tr class="text-center"><td colspan="3">${message}</td></tr>`;
+                        table.innerHTML = `<tr class="text-center"><td colspan="4">${message}</td></tr>`;
                     }
                 }
 
-                function addToSelectedTable(tableBody, name, dept, id, type) {
+                function addToSelectedTable(tableBody, name, dept, id, type, nik) {
                     const emptyRow = tableBody.querySelector('.text-center');
                     if (emptyRow) emptyRow.remove();
                     if (tableBody.querySelector(`tr[data-id="${id}"]`)) return;
@@ -379,6 +460,7 @@
                     const row = document.createElement('tr');
                     row.dataset.id = id;
                     row.innerHTML = `
+                        <td>${nik}</td>
                         <td>${name}</td>
                         <td>${dept}</td>
                         <td>
@@ -420,20 +502,21 @@
                     });
                 }
 
-                // ====== Restore dari Local Storage ======
+                // Restore dari Local Storage
                 window.selectedPic.forEach(item => {
-                    addToSelectedTable(selectedPicTable, item.display_name, item.Departement, item.id, 'pic');
+                    addToSelectedTable(selectedPicTable, item.display_name, item.Departement, item.id, 'pic',
+                        item.nik || '-');
                 });
                 window.selectedAbsent.forEach(item => {
                     addToSelectedTable(selectedAbsentTable, item.display_name, item.Departement, item.id,
-                        'absent');
+                        'absent', item.nik || '-');
                 });
 
                 refreshEmptyState(selectedPicTable, 'No PIC selected');
                 refreshEmptyState(selectedAbsentTable, 'No Absent selected');
                 syncSelectionButtons();
 
-                // ====== Event: Pilih PIC ======
+                // Event pilih PIC
                 if (picList) {
                     picList.addEventListener('click', (e) => {
                         if (!e.target.classList.contains('select-pic')) return;
@@ -458,7 +541,8 @@
                                 nik,
                                 img
                             });
-                            addToSelectedTable(selectedPicTable, display_name, Departement, id, 'pic');
+                            addToSelectedTable(selectedPicTable, display_name, Departement, id, 'pic', nik ||
+                                '-');
                             e.target.innerHTML = '<i class="bi bi-check-circle"></i> Selected';
                             e.target.disabled = true;
 
@@ -475,7 +559,7 @@
                     });
                 }
 
-                // ====== Event: Pilih Absent ======
+                // Event Pilih Absent
                 if (absentList) {
                     absentList.addEventListener('click', (e) => {
                         if (!e.target.classList.contains('select-absent')) return;
@@ -500,7 +584,8 @@
                                 nik,
                                 img
                             });
-                            addToSelectedTable(selectedAbsentTable, display_name, Departement, id, 'absent');
+                            addToSelectedTable(selectedAbsentTable, display_name, Departement, id, 'absent',
+                                nik || '-');
                             e.target.innerHTML = '<i class="bi bi-check-circle"></i> Selected';
                             e.target.disabled = true;
 
@@ -517,7 +602,6 @@
                     });
                 }
 
-                // ====== Event: Remove PIC / Absent ======
                 document.addEventListener('click', (e) => {
                     // Hapus PIC
                     if (e.target.closest('.remove-pic')) {
@@ -564,7 +648,6 @@
                     });
                 }
 
-                // 🔹 Fungsi update localStorage saat file berubah
                 function saveSelectedFiles() {
                     const rows = Array.from(selectedFileTableBody.querySelectorAll('tr[data-path]')).map(row => ({
                         name: row.children[0].textContent.trim(),
@@ -574,7 +657,6 @@
                     selectedFiles = rows;
                 }
 
-                // 🔹 Event ketika memilih file
                 document.querySelectorAll('.select-file').forEach(cb => {
                     cb.addEventListener('change', function() {
                         const name = this.dataset.name;
@@ -601,11 +683,10 @@
                         }
 
                         saveSelectedFiles();
-                        updateSlideshowButtonState?.(); // tetap sinkron
+                        updateSlideshowButtonState?.();
                     });
                 });
 
-                // 🔹 Hapus file dari tabel dan localStorage
                 selectedFileTableBody.addEventListener('click', function(e) {
                     if (e.target.closest('.remove-file')) {
                         e.preventDefault();
@@ -700,9 +781,8 @@
                     if (!btn) return;
                     e.preventDefault();
 
-                    const pdfUrl = btn.dataset.path; // ambil URL dari data-path
+                    const pdfUrl = btn.dataset.path;
 
-                    // Tampilkan PDF langsung di iframe (bawaan browser)
                     pdfViewer.src = pdfUrl;
                     pdfModal.show();
                 });
@@ -768,18 +848,16 @@
                     currentDirection = direction;
 
                     try {
-                        // 🔹 Animasi keluar
                         pdfCanvas.style.transform = direction === 'right' ? "translateX(-100%)" :
                             "translateX(100%)";
                         pdfCanvas.style.opacity = "0";
 
                         await new Promise(resolve => setTimeout(resolve, 600));
 
-                        // 🔹 Muat PDF jika beda file
                         if (!pdfDoc || pdfDoc.url !== url) {
                             const loadingTask = pdfjsLib.getDocument(url);
                             pdfDoc = await loadingTask.promise;
-                            pdfDoc.url = url; // simpan untuk identifikasi
+                            pdfDoc.url = url;
                             totalPages = pdfDoc.numPages;
                             currentPage = 1;
                         }

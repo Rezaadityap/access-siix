@@ -49,10 +49,12 @@
                                         data-bs-toggle="modal" data-bs-target="#searchPO">
                                         <i class="bi bi-search me-2"></i> Search PO Number
                                     </button>
-                                    <a href="{{ route('op-kitting.history') }}"
-                                        class="btn btn-gradient-custom py-2 fw-bold rounded-3 shadow-sm">
-                                        <i class="bi bi-clock-history me-2"></i> History Record
-                                    </a>
+                                    @if (Auth::user()->level_id !== null)
+                                        <a href="{{ route('op-kitting.history') }}"
+                                            class="btn btn-gradient-custom py-2 fw-bold rounded-3 shadow-sm">
+                                            <i class="bi bi-clock-history me-2"></i> History Record
+                                        </a>
+                                    @endif
                                     <button class="btn btn-gradient-purple py-2 fw-bold rounded-3 shadow-sm"
                                         data-bs-toggle="modal" data-bs-target="#scanMismatchModal">
                                         <i class="bi bi-boxes me-2"></i> Scan Stock
@@ -95,7 +97,7 @@
                                                 class="form-label small text-muted mb-1">Checker</label>
                                             <input type="text"
                                                 class="form-control form-control-sm rounded-3 bg-light border-0"
-                                                value="{{ Auth::user()->name }}">
+                                                placeholder="Checker" id="infoChecker" disabled>
                                         </div>
                                         <div class="col-sm-6">
                                             <label for="infoDate" class="form-label small text-muted mb-1">DATE</label>
@@ -123,14 +125,19 @@
                                     </div>
                                 </form>
                                 <div class="d-flex justify-content-center text-end gap-1">
-                                    <button data-bs-toggle="modal" data-bs-target="#editInformation"
-                                        class="btn btn-sm btn-gradient-success text-white rounded-pill px-4 shadow-sm">Edit</button>
-                                    <button class="btn btn-sm btn-gradient-danger text-white rounded-pill px-4 shadow-sm"
-                                        id="deletePO">
-                                        Delete
-                                    </button>
-                                    <button
-                                        class="btn btn-sm btn-gradient-primary text-white rounded-pill px-4 shadow-sm">Save</button>
+                                    @if (Auth::user()->level_id !== null)
+                                        <button id="btnEditInfo"
+                                            class="btn btn-sm btn-gradient-success text-white rounded-pill px-4 shadow-sm">Edit</button>
+                                        <button
+                                            class="btn btn-sm btn-gradient-danger text-white rounded-pill px-4 shadow-sm"
+                                            id="deletePO">
+                                            Delete
+                                        </button>
+                                    @else
+                                        <button id="nextProcess"
+                                            class="btn btn-sm btn-gradient-primary text-white rounded-pill px-4 shadow-sm">Save
+                                            Record</button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -156,13 +163,15 @@
         @include('modal.kitting.search-record')
         {{-- Modal Scan Stock --}}
         @include('modal.kitting.scan-stock')
+        {{-- Modal edit info --}}
+        @include('modal.kitting.edit-information')
     </main>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ asset('assets/js/kitting/import-kitting.js') }}" defer></script>
     <script src="{{ asset('assets/js/kitting/render-save-records.js') }}" defer></script>
     <script src="{{ asset('assets/js/kitting/update-info-fields.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/history-load.js') }}" defer></script>
     <script src="{{ asset('assets/js/kitting/scan-handler.js') }}" defer></script>
     <script src="{{ asset('assets/js/kitting/search-record.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/copy-batch.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/history-load.js') }}" defer></script>
+    <script src="{{ asset('assets/js/kitting/collapse-button.js') }}" defer></script>
 @endsection

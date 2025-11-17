@@ -102,28 +102,25 @@
                 </ul>
             </li>
             <!-- End Forms Nav -->
-
-            @if (Auth::user()->employee->department !== 'IT')
-                <li class="nav-item">
-                    <a class="nav-link collapsed" data-bs-target="#tables-nav" data-bs-toggle="collapse" href="#">
-                        <i class="bi bi-box-fill"></i><span>Finish Good</span><i class="bi bi-chevron-down ms-auto"></i>
-                    </a>
-                    <ul id="tables-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
-                        <li>
-                            <a href="tables-general.html">
-                                <i class="bi bi-circle"></i><span>Checksheet Export</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="tables-data.html">
-                                <i class="bi bi-circle"></i><span>Documentation Export</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            @endif
-            <!-- End Tables Nav -->
         @endif
+        <li class="nav-item">
+            <a class="nav-link collapsed" data-bs-target="#tables-nav" data-bs-toggle="collapse" href="#">
+                <i class="bi bi-box-fill"></i><span>Finish Good</span><i class="bi bi-chevron-down ms-auto"></i>
+            </a>
+            <ul id="tables-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+                <li>
+                    <a href="{{ route('fg.checksheet.index') }}">
+                        <i class="bi bi-circle"></i><span>Checksheet Export</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="tables-data.html">
+                        <i class="bi bi-circle"></i><span>Documentation Export</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <!-- End Tables Nav -->
     </ul>
 
 </aside>

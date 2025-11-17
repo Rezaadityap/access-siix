@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Prices;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -26,7 +27,7 @@ class PriceImportService
         }
 
         $materialKeys  = ['material', 'materialno', 'materialid', 'materialcode'];
-        $unitPriceKeys = ['unitprice', 'unit_price', 'price', 'unitharga', 'unitprc'];
+        $unitPriceKeys = ['UnitPrice', 'unit_price', 'price', 'unitharga', 'unitprc'];
 
         $colMaterial = null;
         $colUnitPrice = null;
@@ -38,6 +39,9 @@ class PriceImportService
             $colUnitPrice = $headerMap[$k];
             break;
         }
+
+        Log::info('DEBUG headerMap', $headerMap);
+        Log::info('Cols detected', ['material' => $colMaterial, 'unit_price' => $colUnitPrice]);
 
         if (!$colMaterial || !$colUnitPrice) {
             return ['status' => 'bad_header', 'message' => 'Header “Material”/“UnitPrice” tidak ditemukan', 'inserted' => 0, 'updated' => 0, 'details' => []];

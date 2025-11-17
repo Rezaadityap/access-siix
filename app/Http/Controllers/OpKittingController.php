@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -31,47 +32,33 @@ class OpKittingController extends Controller
             ], 422);
         }
 
-        $validator = Validator::make(
-            ['forms' => $forms],
-            [
-                'forms.*.po_number' => [
-                    'required',
-                    Rule::unique('record_material_trans', 'po_number'),
-                ],
-            ],
-            [
-                'forms.*.po_number.unique' => 'PO Number :input has already been registered.',
-            ]
-        );
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'duplicate',
-                'message' => $validator->errors()->first(),
-            ], 422);
-        }
-
         $saveRecords = [];
         $lastGroupId = RecordMaterialTrans::max('group_id') ?? 0;
         $newGroupId = $lastGroupId + 1;
 
         foreach ($forms as $form) {
-            if (empty($form['po_number']) || empty($form['model'])) {
+            $poNumber = isset($form['po_number']) ? trim((string) $form['po_number']) : '';
+            $model = isset($form['model']) ? trim((string) $form['model']) : '';
+
+            if ($poNumber === '' || $model === '') {
+                // skip jika data tidak lengkap
                 continue;
             }
 
+            // buat record baru (PO belum ada)
             $record = RecordMaterialTrans::create([
                 'user_id'       => Auth::id(),
                 'group_id'      => $newGroupId,
                 'area'          => Auth::user()->employee->department,
                 'line'          => $form['line'] ?? '-',
                 'date'          => now()->toDateString(),
-                'po_number'     => $form['po_number'] ?? '-',
-                'model'         => $form['model'] ?? '-',
+                'po_number'     => $poNumber,
+                'model'         => $model,
                 'lot_size'      => $form['lot_size'] ?? '-',
                 'act_lot_size'  => $form['act_lot_size'] ?? null
             ]);
 
+            $record->checker_name = Auth::user()->name ?? '-';
             $saveRecords[] = $record;
 
             $filePath = $form['file_path'] ?? null;
@@ -151,15 +138,14 @@ class OpKittingController extends Controller
                 }
             }
 
-            // Simpan ke tabel record_material_lines
             if (!empty($data)) {
                 DB::table('record_material_lines')->insert($data);
-                Log::info("Imported PO {$form['po_number']} - total lines: " . count($data));
+                Log::info("Imported PO {$poNumber} - total lines: " . count($data));
             } else {
-                Log::warning("No valid lines parsed for PO {$form['po_number']}.");
+                Log::warning("No valid lines parsed for PO {$poNumber}.");
             }
 
-            Log::info("Preview first lines of file {$form['po_number']}: ", array_slice($lines, 0, 10));
+            Log::info("Preview first lines of file {$poNumber}: ", array_slice($lines, 0, 10));
         }
 
         return response()->json([
@@ -168,6 +154,7 @@ class OpKittingController extends Controller
             'data' => $saveRecords
         ]);
     }
+
 
     public function upload(Request $request)
     {
@@ -193,9 +180,25 @@ class OpKittingController extends Controller
         return response()->json(['files' => $uploaded]);
     }
 
-    public function getRecord($po_numbers)
+    public function getRecord(Request $request, $po_numbers = null)
     {
-        $records = DB::table('record_material_lines')
+        $poList = [];
+        if (is_array($po_numbers)) {
+            $poList = $po_numbers;
+        } elseif ($po_numbers !== null && $po_numbers !== '') {
+            $poList = array_filter(array_map('trim', explode(',', (string) $po_numbers)));
+        }
+
+        $groupParam = $request->query('group_id', $request->input('group_id', null));
+        $groupIds = [];
+        if (is_array($groupParam)) {
+            $groupIds = $groupParam;
+        } elseif ($groupParam !== null && $groupParam !== '') {
+            $groupIds = array_filter(array_map('trim', explode(',', (string) $groupParam)));
+        }
+
+        // base query
+        $query = DB::table('record_material_lines')
             ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
             ->leftJoin('prices', 'prices.material', '=', 'record_material_lines.material')
             ->leftJoin(DB::raw('(
@@ -231,8 +234,8 @@ class OpKittingController extends Controller
             FROM record_batch_mismatch
             GROUP BY record_material_lines_id
         ) rmm'), 'rmm.record_material_lines_id', '=', 'record_material_lines.id')
-
             ->select(
+                'record_material_trans.group_id',
                 'record_material_lines.material',
                 'record_material_lines.material_desc',
                 DB::raw('SUM(record_material_lines.rec_qty) AS total_qty'),
@@ -249,39 +252,59 @@ class OpKittingController extends Controller
                 'record_material_trans.po_number',
                 'record_material_trans.date',
                 'record_material_trans.cavity',
+                'record_material_trans.change_model',
                 DB::raw('ROUND(COALESCE(prices.unit_price, 0), 2) AS unit_price')
-            )
+            );
 
-            ->where('record_material_trans.po_number', $po_numbers)
-            ->where(function ($query) {
-                $query->whereNull('record_material_lines.status')
-                    ->orWhere('record_material_lines.status', 1);
-            })
+        if (!empty($groupIds)) {
+            $query->whereIn('record_material_trans.group_id', $groupIds);
+        } else {
+            if (!empty($poList)) {
+                if (count($poList) === 1) {
+                    $query->where('record_material_trans.po_number', $poList[0]);
+                } else {
+                    $query->whereIn('record_material_trans.po_number', $poList);
+                }
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No PO number or group_id provided.'
+                ], 422);
+            }
+        }
 
-            ->groupBy(
-                'record_material_lines.material',
-                'record_material_lines.material_desc',
-                'record_material_lines.satuan',
-                'record_material_trans.model',
-                'record_material_trans.po_number',
-                'record_material_trans.date',
-                'record_material_trans.cavity',
-                'rb.total_wh',
-                'rs.total_smd',
-                'rsto.total_sto',
-                'rma.total_mar',
-                'rmm.total_mismatch',
-                'rb.count_wh',
-                'rs.count_smd',
-                'rsto.count_sto',
-                'prices.unit_price'
-            )
-            ->get();
+        $query->where(function ($q) {
+            $q->whereNull('record_material_lines.status')
+                ->orWhere('record_material_lines.status', 1);
+        });
+
+        $query->groupBy(
+            'record_material_trans.group_id',
+            'record_material_lines.material',
+            'record_material_lines.material_desc',
+            'record_material_lines.satuan',
+            'record_material_trans.model',
+            'record_material_trans.po_number',
+            'record_material_trans.date',
+            'record_material_trans.cavity',
+            'record_material_trans.change_model',
+            'rb.total_wh',
+            'rs.total_smd',
+            'rsto.total_sto',
+            'rma.total_mar',
+            'rmm.total_mismatch',
+            'rb.count_wh',
+            'rs.count_smd',
+            'rsto.count_sto',
+            'prices.unit_price'
+        );
+
+        $records = $query->get();
 
         if ($records->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => "No data found for PO: $po_numbers"
+                'message' => "No data found for PO/group: " . (is_array($poList) ? implode(',', $poList) : (string)$po_numbers)
             ], 404);
         }
 
@@ -293,22 +316,31 @@ class OpKittingController extends Controller
 
     public function getRecordSearch(Request $request)
     {
-        $query = RecordMaterialTrans::select(
-            'id',
-            'group_id',
-            'po_number',
-            'area',
-            'line',
-            'model',
-            'date',
-            'lot_size',
-            'act_lot_size'
-        );
+        $query = RecordMaterialTrans::query()
+            ->leftJoin('users', 'users.id', '=', 'record_material_trans.user_id')
+            ->select(
+                'record_material_trans.id',
+                'record_material_trans.group_id',
+                'record_material_trans.po_number',
+                'record_material_trans.area',
+                'record_material_trans.line',
+                'record_material_trans.model',
+                'record_material_trans.date',
+                'record_material_trans.lot_size',
+                'record_material_trans.act_lot_size',
+                'record_material_trans.status',
+                'users.id as checker_id',
+                'users.name as checker_name'
+            );
+
+        if (Auth::user()->level_id === null) {
+            $query->where('record_material_trans.user_id', Auth::id());
+        }
 
         $startDate = $request->start_date ?: date('Y-m-d');
         $endDate = $request->end_date ?: date('Y-m-d');
 
-        $query->whereBetween('date', [$startDate, $endDate]);
+        $query->whereBetween('record_material_trans.date', [$startDate, $endDate]);
         $records = $query->get();
 
         return response()->json($records);
@@ -330,22 +362,110 @@ class OpKittingController extends Controller
         ]);
     }
 
+    public function updateInfo(Request $request)
+    {
+        $request->validate([
+            'group_id' => 'required',
+            'line' => 'nullable|string|max:100',
+            'lot_size' => 'nullable|numeric'
+        ]);
+
+        $groupId = $request->input('group_id');
+        $line = $request->input('line');
+        $lotSize = $request->input('lot_size');
+
+        try {
+            $updated = DB::table('record_material_trans')
+                ->where('group_id', $groupId)
+                ->update([
+                    'line' => $line,
+                    'lot_size' => $lotSize,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Updated {$updated} record(s)."
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('UpdateInfo error: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Server error'], 500);
+        }
+    }
+
     public function checkBatch(Request $request)
     {
         $batches = (array) $request->input('batches', []);
-        $type = strtoupper($request->input('type', ''));
+        $type = strtoupper((string) $request->input('type', ''));
+        $poNumbers = (array) $request->input('po_numbers', []);
 
-        // cari di tiga tabel sekaligus, tanpa tipe (lebih aman)
-        $dups = collect($batches)->unique()->filter(function ($b) {
-            return DB::table('record_batch')->where('batch_wh', $b)->exists()
-                || DB::table('record_batch_smd')->where('batch_smd', $b)->exists()
-                || DB::table('record_batch_sto')->where('batch_sto', $b)->exists();
-        })->values();
+        $normalizedBatches = collect($batches)
+            ->map(fn($b) => strtolower(trim((string)$b)))
+            ->filter(fn($b) => $b !== '')
+            ->unique()
+            ->values()
+            ->all();
 
-        return response()->json([
-            'status' => 'success',
-            'duplicates' => $dups,
-        ]);
+        if (empty($normalizedBatches)) {
+            return response()->json(['status' => 'success', 'duplicates' => []]);
+        }
+
+        $poNumbers = collect($poNumbers)
+            ->map(fn($p) => trim((string)$p))
+            ->filter(fn($p) => $p !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($poNumbers)) {
+            return response()->json(['status' => 'success', 'duplicates' => []]);
+        }
+
+        $currentGroup = $request->input('group_id');
+
+        if (!$currentGroup) {
+            return response()->json([
+                'status' => 'success',
+                'duplicates' => []
+            ]);
+        }
+
+        // cek duplikat hanya di group yang sedang aktif
+        $groupIds = [$currentGroup];
+
+        if (empty($groupIds)) {
+            return response()->json(['status' => 'success', 'duplicates' => []]);
+        }
+
+        $found = collect();
+
+        // helper: build placeholders & bindings for normalized values
+        $placeholders = implode(',', array_fill(0, count($normalizedBatches), '?'));
+        $bindings = $normalizedBatches;
+
+        $checkTableInGroups = function (string $table, string $col) use (&$found, $placeholders, $bindings, $groupIds) {
+            $sql = "
+            SELECT DISTINCT {$table}.{$col} as raw_val
+            FROM {$table}
+            JOIN record_material_lines ON {$table}.record_material_lines_id = record_material_lines.id
+            JOIN record_material_trans ON record_material_lines.record_material_trans_id = record_material_trans.id
+            WHERE record_material_trans.group_id IN (" . implode(',', array_map('intval', $groupIds)) . ")
+              AND LOWER(TRIM({$table}.{$col})) IN ({$placeholders})
+        ";
+            $rows = DB::select($sql, $bindings);
+            foreach ($rows as $r) {
+                $found->push($r->raw_val);
+            }
+        };
+
+        // check relevant tables
+        $checkTableInGroups('record_batch', 'batch_wh');
+        $checkTableInGroups('record_batch_smd', 'batch_smd');
+        $checkTableInGroups('record_batch_sto', 'batch_sto');
+
+        $dups = $found->unique()->values()->all();
+
+        return response()->json(['status' => 'success', 'duplicates' => $dups]);
     }
 
     public function saveWhMaterial(Request $request)
@@ -368,12 +488,23 @@ class OpKittingController extends Controller
             $qty = $scan['qty'];
             $description = $scan['description'];
 
-            $recordLine = DB::table('record_material_lines')
+            $po_numbers = array_values(array_filter(array_column($poList, 'po_number')));
+            $group_ids = array_values(array_filter(array_column($poList, 'group_id')));
+
+            $rlQuery = DB::table('record_material_lines')
                 ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-                ->select('record_material_lines.id as rml_id')
-                ->whereIn('record_material_trans.po_number', array_column($poList, 'po_number'))
-                ->where('record_material_lines.material', $material)
-                ->first();
+                ->select('record_material_lines.id as rml_id');
+
+            if (!empty($group_ids)) {
+                $rlQuery->whereIn('record_material_trans.group_id', $group_ids);
+            } elseif (!empty($po_numbers)) {
+                $rlQuery->whereIn('record_material_trans.po_number', $po_numbers);
+            }
+
+            $rlQuery->where('record_material_lines.material', $material);
+
+            // ambil first
+            $recordLine = $rlQuery->first();
 
             if ($recordLine) {
                 DB::table('record_batch')->insert([
@@ -415,12 +546,24 @@ class OpKittingController extends Controller
             $qty = $scan['qty'];
             $description = $scan['description'];
 
-            $recordLine = DB::table('record_material_lines')
+            $po_numbers = array_values(array_filter(array_column($poList, 'po_number')));
+            $group_ids = array_values(array_filter(array_column($poList, 'group_id')));
+
+            // builder awal
+            $rlQuery = DB::table('record_material_lines')
                 ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-                ->select('record_material_lines.id as rml_id')
-                ->whereIn('record_material_trans.po_number', array_column($poList, 'po_number'))
-                ->where('record_material_lines.material', $material)
-                ->first();
+                ->select('record_material_lines.id as rml_id');
+
+            if (!empty($group_ids)) {
+                $rlQuery->whereIn('record_material_trans.group_id', $group_ids);
+            } elseif (!empty($po_numbers)) {
+                $rlQuery->whereIn('record_material_trans.po_number', $po_numbers);
+            }
+
+            $rlQuery->where('record_material_lines.material', $material);
+
+            // ambil first
+            $recordLine = $rlQuery->first();
 
             if ($recordLine) {
                 DB::table('record_batch_smd')->insert([
@@ -462,12 +605,23 @@ class OpKittingController extends Controller
             $qty = $scan['qty'];
             $description = $scan['description'];
 
-            $recordLine = DB::table('record_material_lines')
+            $po_numbers = array_values(array_filter(array_column($poList, 'po_number')));
+            $group_ids = array_values(array_filter(array_column($poList, 'group_id')));
+
+            $rlQuery = DB::table('record_material_lines')
                 ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-                ->select('record_material_lines.id as rml_id')
-                ->whereIn('record_material_trans.po_number', array_column($poList, 'po_number'))
-                ->where('record_material_lines.material', $material)
-                ->first();
+                ->select('record_material_lines.id as rml_id');
+
+            if (!empty($group_ids)) {
+                $rlQuery->whereIn('record_material_trans.group_id', $group_ids);
+            } elseif (!empty($po_numbers)) {
+                $rlQuery->whereIn('record_material_trans.po_number', $po_numbers);
+            }
+
+            $rlQuery->where('record_material_lines.material', $material);
+
+            // ambil first
+            $recordLine = $rlQuery->first();
 
             if ($recordLine) {
                 DB::table('record_batch_sto')->insert([
@@ -497,7 +651,6 @@ class OpKittingController extends Controller
         $cavity = $request->input('cavity');
         $change_model = $request->input('changeModel');
 
-        // === LOG STEP 1: Input awal ===
         Log::info('=== saveAfter() called ===', [
             'poList' => $poList,
             'scanned' => $scanned,
@@ -536,12 +689,30 @@ class OpKittingController extends Controller
                     'description' => $description,
                 ]);
 
-                $recordLine = DB::table('record_material_lines')
+                // ambil po_numbers dan group_ids dari payload (safe)
+                $po_numbers = array_values(array_filter(array_column($poList, 'po_number')));
+                $group_ids = array_values(array_filter(array_column($poList, 'group_id')));
+
+                // builder awal
+                $rlQuery = DB::table('record_material_lines')
                     ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-                    ->select('record_material_lines.id as rml_id', 'record_material_trans.id as trans_id', 'record_material_trans.po_number')
-                    ->whereIn('record_material_trans.po_number', array_column($poList, 'po_number'))
-                    ->where('record_material_lines.material', $material)
-                    ->first();
+                    ->select(
+                        'record_material_lines.id as rml_id',
+                        'record_material_trans.id as trans_id',
+                        'record_material_trans.po_number as po_number'
+                    );
+
+                if (!empty($group_ids)) {
+                    $rlQuery->whereIn('record_material_trans.group_id', $group_ids);
+                } elseif (!empty($po_numbers)) {
+                    $rlQuery->whereIn('record_material_trans.po_number', $po_numbers);
+                }
+
+                // filter material
+                $rlQuery->where('record_material_lines.material', $material);
+
+                // ambil first
+                $recordLine = $rlQuery->first();
 
                 if ($recordLine) {
                     Log::info('saveAfter(): Found record line', [
@@ -649,12 +820,24 @@ class OpKittingController extends Controller
             $qty = $scan['qty'];
             $description = $scan['description'];
 
-            $recordLine = DB::table('record_material_lines')
+            $po_numbers = array_values(array_filter(array_column($poList, 'po_number')));
+            $group_ids = array_values(array_filter(array_column($poList, 'group_id')));
+
+            $rlQuery = DB::table('record_material_lines')
                 ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-                ->select('record_material_lines.id as rml_id')
-                ->whereIn('record_material_trans.po_number', array_column($poList, 'po_number'))
-                ->where('record_material_lines.material', $material)
-                ->first();
+                ->select('record_material_lines.id as rml_id');
+
+            if (!empty($group_ids)) {
+                $rlQuery->whereIn('record_material_trans.group_id', $group_ids);
+            } elseif (!empty($po_numbers)) {
+                $rlQuery->whereIn('record_material_trans.po_number', $po_numbers);
+            }
+
+            // filter material
+            $rlQuery->where('record_material_lines.material', $material);
+
+            // ambil first
+            $recordLine = $rlQuery->first();
 
             if ($recordLine) {
                 DB::table('record_batch_mismatch')->insert([
@@ -679,82 +862,76 @@ class OpKittingController extends Controller
     public function getBatchHistory(Request $request)
     {
         $poNumbers = $request->input('po');
+        $groupIds  = $request->input('group_id');
+
         if (!$poNumbers) {
             return response()->json(['status' => 'error', 'message' => 'No PO provided']);
         }
 
-        // pastikan poNumbers array
         $poList = is_array($poNumbers) ? $poNumbers : explode(',', $poNumbers);
 
-        // ambil record SMD
-        $smd = DB::table('record_batch_smd')
-            ->join('record_material_lines', 'record_batch_smd.record_material_lines_id', '=', 'record_material_lines.id')
-            ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-            ->whereIn('record_material_trans.po_number', $poList)
-            ->select(
-                'record_material_trans.po_number',
-                'record_batch_smd.batch_smd as scan_code',
-                'record_material_lines.material',
-                'record_batch_smd.qty_batch_smd as qty',
-                'record_batch_smd.batch_smd_desc as batch_description',
-            )
-            ->get();
+        $groupList = [];
+        if ($groupIds !== null && $groupIds !== '') {
+            $groupList = is_array($groupIds) ? $groupIds : explode(',', $groupIds);
+        }
 
-        // ambil record WH
-        $wh = DB::table('record_batch')
-            ->join('record_material_lines', 'record_batch.record_material_lines_id', '=', 'record_material_lines.id')
-            ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-            ->whereIn('record_material_trans.po_number', $poList)
-            ->select(
-                'record_material_trans.po_number',
-                'record_batch.batch_wh as scan_code',
-                'record_material_lines.material',
-                'record_batch.qty_batch_wh as qty',
-                'record_batch.batch_wh_desc as batch_description'
-            )
-            ->get();
+        $base = function ($table, $selectMap) use ($poList, $groupList) {
+            $q = DB::table($table)
+                ->join('record_material_lines', "$table.record_material_lines_id", '=', 'record_material_lines.id')
+                ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
+                ->whereIn('record_material_trans.po_number', $poList);
 
-        // ambil record Sto
-        $sto = DB::table('record_batch_sto')
-            ->join('record_material_lines', 'record_batch_sto.record_material_lines_id', '=', 'record_material_lines.id')
-            ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-            ->whereIn('record_material_trans.po_number', $poList)
-            ->select(
-                'record_material_trans.po_number',
-                'record_batch_sto.batch_sto as scan_code',
-                'record_material_lines.material',
-                'record_batch_sto.qty_batch_sto as qty',
-                'record_batch_sto.batch_sto_desc as batch_description'
-            )
-            ->get();
+            if (!empty($groupList)) {
+                $q->whereIn('record_material_trans.group_id', $groupList);
+            }
 
-        // ambil record mar
-        $mar = DB::table('record_batch_mar')
-            ->join('record_material_lines', 'record_batch_mar.record_material_lines_id', '=', 'record_material_lines.id')
-            ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-            ->whereIn('record_material_trans.po_number', $poList)
-            ->select(
-                'record_material_trans.po_number',
-                'record_batch_mar.batch_mar as scan_code',
-                'record_material_lines.material',
-                'record_batch_mar.qty_batch_mar as qty',
-                'record_batch_mar.batch_mar_desc as batch_description'
-            )
-            ->get();
+            return $q->select($selectMap)->get();
+        };
 
-        // ambil record mismatch
-        $mm = DB::table('record_batch_mismatch')
-            ->join('record_material_lines', 'record_batch_mismatch.record_material_lines_id', '=', 'record_material_lines.id')
-            ->join('record_material_trans', 'record_material_lines.record_material_trans_id', '=', 'record_material_trans.id')
-            ->whereIn('record_material_trans.po_number', $poList)
-            ->select(
-                'record_material_trans.po_number',
-                'record_batch_mismatch.batch_mismatch as scan_code',
-                'record_material_lines.material',
-                'record_batch_mismatch.qty_batch_mismatch as qty',
-                'record_batch_mismatch.batch_mismatch_desc as batch_description'
-            )
-            ->get();
+        // SMD
+        $smd = $base('record_batch_smd', [
+            'record_material_trans.po_number',
+            'record_batch_smd.batch_smd as scan_code',
+            'record_material_lines.material',
+            'record_batch_smd.qty_batch_smd as qty',
+            'record_batch_smd.batch_smd_desc as batch_description'
+        ]);
+
+        // WH
+        $wh = $base('record_batch', [
+            'record_material_trans.po_number',
+            'record_batch.batch_wh as scan_code',
+            'record_material_lines.material',
+            'record_batch.qty_batch_wh as qty',
+            'record_batch.batch_wh_desc as batch_description'
+        ]);
+
+        // STO
+        $sto = $base('record_batch_sto', [
+            'record_material_trans.po_number',
+            'record_batch_sto.batch_sto as scan_code',
+            'record_material_lines.material',
+            'record_batch_sto.qty_batch_sto as qty',
+            'record_batch_sto.batch_sto_desc as batch_description'
+        ]);
+
+        // MAR
+        $mar = $base('record_batch_mar', [
+            'record_material_trans.po_number',
+            'record_batch_mar.batch_mar as scan_code',
+            'record_material_lines.material',
+            'record_batch_mar.qty_batch_mar as qty',
+            'record_batch_mar.batch_mar_desc as batch_description'
+        ]);
+
+        // MISMATCH
+        $mm = $base('record_batch_mismatch', [
+            'record_material_trans.po_number',
+            'record_batch_mismatch.batch_mismatch as scan_code',
+            'record_material_lines.material',
+            'record_batch_mismatch.qty_batch_mismatch as qty',
+            'record_batch_mismatch.batch_mismatch_desc as batch_description'
+        ]);
 
         return response()->json([
             'status' => 'success',
@@ -766,54 +943,93 @@ class OpKittingController extends Controller
         ]);
     }
 
+
     public function deletePO(Request $request)
     {
-        $poNumbers = $request->input('po_numbers', []);
+        $poNumbers = (array) $request->input('po_numbers', []);
+        $groupIds = (array) $request->input('group_ids', []);
 
-        if (empty($poNumbers)) {
+        $poNumbers = array_values(array_filter(array_map('trim', $poNumbers), fn($v) => $v !== ''));
+        $groupIds = array_values(array_filter(array_map('trim', $groupIds), fn($v) => $v !== ''));
+
+        if (empty($poNumbers) && empty($groupIds)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'No PO numbers provided.'
+                'message' => 'No PO numbers or group_ids provided.'
             ], 400);
         }
 
-        // Ambil ID dari record_material_trans berdasarkan po_number
-        $transIds = DB::table('record_material_trans')
-            ->whereIn('po_number', $poNumbers)
-            ->pluck('id');
+        try {
+            DB::beginTransaction();
 
-        if ($transIds->isEmpty()) {
+            $transQuery = DB::table('record_material_trans')->select('id', 'po_number', 'group_id');
+
+            if (!empty($groupIds)) {
+                $transQuery->whereIn('group_id', $groupIds);
+            }
+
+            if (!empty($poNumbers)) {
+                if (!empty($groupIds)) {
+                    $transQuery->orWhereIn('po_number', $poNumbers);
+                } else {
+                    $transQuery->whereIn('po_number', $poNumbers);
+                }
+            }
+
+            $transRows = $transQuery->get();
+
+            if ($transRows->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No matching record_material_trans found for given group_ids / po_numbers.'
+                ], 404);
+            }
+
+            $transIds = $transRows->pluck('id')->toArray();
+
+            $lineIds = DB::table('record_material_lines')
+                ->whereIn('record_material_trans_id', $transIds)
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($lineIds)) {
+                DB::table('record_batch')->whereIn('record_material_lines_id', $lineIds)->delete();
+                DB::table('record_batch_smd')->whereIn('record_material_lines_id', $lineIds)->delete();
+                DB::table('record_batch_sto')->whereIn('record_material_lines_id', $lineIds)->delete();
+                DB::table('record_batch_mar')->whereIn('record_material_lines_id', $lineIds)->delete();
+                // jika ada mismatch table
+                if (Schema::hasTable('record_batch_mismatch')) {
+                    DB::table('record_batch_mismatch')->whereIn('record_material_lines_id', $lineIds)->delete();
+                }
+
+                // Hapus record detail material
+                DB::table('record_material_lines')->whereIn('id', $lineIds)->delete();
+            }
+
+            // Hapus trans headers
+            DB::table('record_material_trans')->whereIn('id', $transIds)->delete();
+
+            DB::commit();
+
+            // prepare list of deleted identifiers for response
+            $deletedPOs = $transRows->pluck('po_number')->unique()->values()->all();
+            $deletedGroups = $transRows->pluck('group_id')->unique()->values()->all();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'PO(s) and related records successfully deleted.',
+                'deleted_po' => $deletedPOs,
+                'deleted_group_ids' => $deletedGroups,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('deletePO error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'status' => 'error',
-                'message' => 'No matching PO found in database.'
-            ], 404);
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Ambil ID record_material_lines yang berelasi
-        $lineIds = DB::table('record_material_lines')
-            ->whereIn('record_material_trans_id', $transIds)
-            ->pluck('id');
-
-        if ($lineIds->isNotEmpty()) {
-            // Hapus record di batch table yang terkait dengan record_material_lines_id
-            DB::table('record_batch')->whereIn('record_material_lines_id', $lineIds)->delete();
-            DB::table('record_batch_smd')->whereIn('record_material_lines_id', $lineIds)->delete();
-            DB::table('record_batch_sto')->whereIn('record_material_lines_id', $lineIds)->delete();
-            DB::table('record_batch_mar')->whereIn('record_material_lines_id', $lineIds)->delete();
-
-            // Hapus record detail material
-            DB::table('record_material_lines')->whereIn('id', $lineIds)->delete();
-        }
-
-        DB::table('record_material_trans')
-            ->whereIn('id', $transIds)
-            ->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'PO(s) and all related records successfully deleted.',
-            'deleted_po' => $poNumbers
-        ]);
     }
 
     public function history(Request $request)
@@ -877,5 +1093,29 @@ class OpKittingController extends Controller
                 'data' => $new,
             ]);
         });
+    }
+    public function saveRecord(Request $request)
+    {
+        $groupIds = (array) $request->input('group_ids', []);
+        $groupIds = array_filter(array_map('trim', $groupIds), fn($v) => $v !== '');
+
+        if (empty($groupIds)) {
+            return response()->json(['status' => 'error', 'message' => 'No group_ids provided'], 422);
+        }
+
+        try {
+            $updated = DB::table('record_material_trans')
+                ->whereIn('group_id', $groupIds)
+                ->update(['status' => 1, 'updated_at' => now()]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Status updated for " . intval($updated) . " record(s).",
+                'updated' => $updated
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('markNext error: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()], 500);
+        }
     }
 }

@@ -38,7 +38,7 @@
                                             <th style="background-color: #f8d7da;" class="sortable" data-type="number">
                                                 BAL Qty<br>After
                                                 STO</th>
-                                            <th style="background-color: #fff3cd;"">
+                                            <th style="background-color: #fff3cd;">
                                                 Total
                                                 Qty<br>Actual</th>
                                             <th style="background-color: #fff3cd;">

@@ -5,7 +5,8 @@
                 <table class="table table-striped history-material-table">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th>No</th>
+                            <th>Model</th>
                             <th>PO Number</th>
                             <th>Batch</th>
                             <th>Description</th>
@@ -16,7 +17,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="text-center" colspan="7">No batch found.</td>
+                            <td class="text-center" colspan="8">No batch found.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -30,8 +31,10 @@
                 <table class="table table-striped history-material-table">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th>No</th>
+                            <th>Model</th>
                             <th>PO Number</th>
+                            <th>Line</th>
                             <th>Batch</th>
                             <th>Description</th>
                             <th>Qty</th>
@@ -43,7 +46,9 @@
                         @foreach ($batches as $i => $b)
                             <tr>
                                 <td>{{ $i + 1 }}</td>
+                                <td>{{ $b->model }}</td>
                                 <td>{{ $b->po_number }}</td>
+                                <td>{{ $b->line }}</td>
                                 <td>{{ $b->batch }}</td>
                                 <td>{{ $b->description }}</td>
                                 <td>{{ $b->qty }}</td>

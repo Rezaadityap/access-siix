@@ -1,27 +1,51 @@
-/**
- * loadHistoryData
- * - poNumbers: array of PO numbers (or array of objects with po_number) or single string/obj
- * - returns a Promise that resolves when table rendering is done
- */
 function loadHistoryData(poNumbers) {
-    // normalize to array of strings
     if (!poNumbers) {
-        // try read from DOM as fallback
-        poNumbers = getCurrentPOFromDOM().map((p) => p.po_number);
+        poNumbers = getCurrentPOFromDOM().map((p) => ({
+            po_number: p.po_number,
+            group_id: p.group_id ?? null,
+        }));
     } else if (!Array.isArray(poNumbers)) {
-        // if passed array of objects {po_number} or string
-        if (typeof poNumbers === "string") poNumbers = [poNumbers];
-        else if (poNumbers && poNumbers.po_number)
-            poNumbers = [poNumbers.po_number];
-        else poNumbers = Array.from(poNumbers); // best effort
+        if (typeof poNumbers === "string") {
+            const dom = getCurrentPOFromDOM().find(
+                (d) => d.po_number === poNumbers
+            );
+            poNumbers = [
+                {
+                    po_number: poNumbers,
+                    group_id: dom ? dom.group_id : null,
+                },
+            ];
+        } else if (poNumbers.po_number) {
+            // object passed
+            poNumbers = [
+                {
+                    po_number: poNumbers.po_number,
+                    group_id: poNumbers.group_id ?? null,
+                },
+            ];
+        }
+    } else {
+        // array: normalize each item
+        poNumbers = poNumbers.map((p) => {
+            if (typeof p === "string") {
+                const dom = getCurrentPOFromDOM().find(
+                    (d) => d.po_number === p
+                );
+                return {
+                    po_number: p,
+                    group_id: dom ? dom.group_id : null,
+                };
+            }
+            return {
+                po_number: p.po_number,
+                group_id: p.group_id ?? null,
+            };
+        });
     }
 
-    // flatten possible array of objects
-    poNumbers = poNumbers
-        .map((p) => (typeof p === "string" ? p : p?.po_number))
-        .filter(Boolean);
+    // remove invalid
+    poNumbers = poNumbers.filter((p) => p.po_number);
 
-    // convenience: if nothing, clear history tables and resolve
     if (!poNumbers.length) {
         [
             "#recordScanSMD",
@@ -33,7 +57,7 @@ function loadHistoryData(poNumbers) {
         return Promise.resolve();
     }
 
-    // show loading for each table
+    // show loading
     [
         "#recordScanSMD",
         "#recordScanWH",
@@ -42,29 +66,26 @@ function loadHistoryData(poNumbers) {
         "#recordScanMismatch",
     ].forEach((tid) => showLoading(tid));
 
+    const poList = poNumbers.map((p) => p.po_number).join(",");
+    const groupList = poNumbers.map((p) => p.group_id ?? "").join(",");
+
     const url = `/record-material/history?po=${encodeURIComponent(
-        poNumbers.join(",")
-    )}`;
+        poList
+    )}&group_id=${encodeURIComponent(groupList)}`;
 
     return fetch(url, { credentials: "same-origin" })
-        .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
+        .then((res) =>
+            res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`)
+        )
         .then(async (data) => {
             if (data.status === "success") {
-                // optionally ensure material cache is up-to-date for displayed POs
+                // preload
                 try {
-                    const csrf =
-                        document.querySelector('meta[name="csrf-token"]')
-                            ?.content || "{{ csrf_token() }}";
-                    await preloadMaterialsForPOs(
-                        poNumbers.map((n) => ({ po_number: n })),
-                        csrf
-                    );
-                } catch (e) {
-                    // ignore preload errors, it's non-fatal for history render
-                }
+                    const csrf = document.querySelector(
+                        'meta[name="csrf-token"]'
+                    )?.content;
+                    await preloadMaterialsForPOs(poNumbers, csrf);
+                } catch (_) {}
 
                 fillTable("#recordScanSMD", data.smd);
                 fillTable("#recordScanWH", data.wh);
@@ -73,18 +94,19 @@ function loadHistoryData(poNumbers) {
                 fillTable("#recordScanMismatch", data.mm);
 
                 return data;
-            } else {
-                const err = data.message || "No history data";
-                [
-                    "#recordScanSMD",
-                    "#recordScanWH",
-                    "#recordScanSTO",
-                    "#recordScanMAR",
-                    "#recordScanMismatch",
-                ].forEach((tid) => showError(tid, err));
-                // still resolve so callers don't hang
-                return Promise.resolve(data);
             }
+
+            [
+                "#recordScanSMD",
+                "#recordScanWH",
+                "#recordScanSTO",
+                "#recordScanMAR",
+                "#recordScanMismatch",
+            ].forEach((tid) =>
+                showError(tid, data.message || "No history data")
+            );
+
+            return data;
         })
         .catch((err) => {
             console.error("Error loading history:", err);
@@ -94,18 +116,21 @@ function loadHistoryData(poNumbers) {
                 "#recordScanSTO",
                 "#recordScanMAR",
                 "#recordScanMismatch",
-            ].forEach((tid) =>
-                showError(tid, err.message || "Failed to load history")
-            );
+            ].forEach((tid) => showError(tid, "Failed to load history"));
             return Promise.reject(err);
         });
 }
 
-/**
- * fillTable
- * - tableId: selector to table (e.g. "#recordScanSMD")
- * - rows: array of objects: { scan_code, material, qty, batch_description } (can be empty)
- */
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+window.escapeHtml = escapeHtml;
+
 function fillTable(tableId, rows) {
     const tbody = document.querySelector(`${tableId} tbody`);
     if (!tbody) {
@@ -133,32 +158,26 @@ function fillTable(tableId, rows) {
     });
     tbody.appendChild(frag);
 }
-
-/* small helpers for UX */
+window.fillTable = fillTable;
 function showLoading(tableId) {
     const tbody = document.querySelector(`${tableId} tbody`);
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>`;
 }
+window.showLoading = showLoading;
+
 function showError(tableId, msg) {
     const tbody = document.querySelector(`${tableId} tbody`);
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${escapeHtml(
-        String(msg)
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${String(
+        msg
     )}</td></tr>`;
 }
+window.showError = showError;
+
 function showNoData(tableId) {
     const tbody = document.querySelector(`${tableId} tbody`);
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No data found</td></tr>`;
 }
-
-/* tiny HTML escape to avoid accidental injection when using innerHTML */
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
+window.showNoData = showNoData;

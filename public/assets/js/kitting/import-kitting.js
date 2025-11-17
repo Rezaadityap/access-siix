@@ -48,28 +48,76 @@ $(document).ready(function () {
                     '#importTable tbody tr:contains("No files uploaded")'
                 ).remove();
 
+                let duplicatesSkipped = 0;
+
                 response.files.forEach((file) => {
-                    const { model, po_number, path } = file;
+                    const model = (file.model || "").toString().trim();
+                    const po_number = (file.po_number || "").toString().trim();
+                    const path = file.path;
 
-                    // Cegah duplikasi path
-                    if (uploadedFiles.some((f) => f.path === path)) return;
+                    if (!po_number) {
+                        // jika PO kosong, tetep masukan
+                        uploadedFiles.push({ model, po_number, path });
+                        const newRow = `
+            <tr data-path="${path}">
+                <td><input type="text" class="form-control po_number" value="${po_number}" readonly></td>
+                <td><input type="text" class="form-control model" value="${model}" readonly></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-danger remove-row" title="Remove this file">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+                        $("#importTable tbody").append(newRow);
+                        return;
+                    }
 
-                    const fileData = { model, po_number, path };
-                    uploadedFiles.push(fileData);
+                    // normalisasi key: gabungkan po_number + '::' + model, lowercase untuk case-insensitive
+                    const key = `${po_number}::${model}`.toLowerCase();
+
+                    const exists = uploadedFiles.some((f) => {
+                        const existingKey = `${(f.po_number || "")
+                            .toString()
+                            .trim()}::${(f.model || "")
+                            .toString()
+                            .trim()}`.toLowerCase();
+                        return existingKey === key;
+                    });
+
+                    if (exists) {
+                        duplicatesSkipped++;
+                        return;
+                    }
+
+                    // tambahkan file baru (first-seen wins)
+                    uploadedFiles.push({ model, po_number, path });
 
                     const newRow = `
-                        <tr data-path="${path}">
-                            <td><input type="text" class="form-control po_number" value="${po_number}" readonly></td>
-                            <td><input type="text" class="form-control model" value="${model}" readonly></td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-danger remove-row" title="Remove this file">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
+        <tr data-path="${path}">
+            <td><input type="text" class="form-control po_number" value="${po_number}" readonly></td>
+            <td><input type="text" class="form-control model" value="${model}" readonly></td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-danger remove-row" title="Remove this file">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
                     $("#importTable tbody").append(newRow);
                 });
+
+                if (duplicatesSkipped > 0) {
+                    Swal.fire({
+                        icon: "info",
+                        title: "Duplicates removed",
+                        text: `${duplicatesSkipped} duplicate file(s) (same PO + Model) were skipped and not added to the import list.`,
+                        timer: 1800,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: "top-end",
+                    });
+                }
 
                 // Fokus ke tabel biar user bisa langsung lihat hasil upload
                 $("#importTable")
@@ -184,15 +232,25 @@ $(document).ready(function () {
                                         : [];
 
                                     // build safe poList (only items with po_number)
+                                    const domPOs = getCurrentPOFromDOM();
                                     const poList = data
                                         .map((r) => ({
                                             po_number: r?.po_number,
+                                            group_id:
+                                                r?.group_id ??
+                                                r?.groupId ??
+                                                domPOs.find(
+                                                    (d) =>
+                                                        d.po_number ===
+                                                        r?.po_number
+                                                )?.group_id ??
+                                                null,
                                         }))
-                                        .filter(
-                                            (p) =>
-                                                p.po_number &&
-                                                p.po_number !== ""
-                                        );
+                                        .filter((p) => p.po_number);
+
+                                    if (poList.length) {
+                                        window.renderSavedPOFromList(poList);
+                                    }
 
                                     if (poList.length) {
                                         if (
@@ -221,6 +279,15 @@ $(document).ready(function () {
                                         );
                                     }
 
+                                    if (typeof loadHistoryData === "function") {
+                                        // kirim semua PO & group_id
+                                        const hist = data.map((d) => ({
+                                            po_number: d.po_number,
+                                            group_id: d.group_id ?? null,
+                                        }));
+                                        loadHistoryData(hist);
+                                    }
+
                                     // reload datatable only if initialized
                                     if (
                                         $.fn.DataTable &&
@@ -233,7 +300,6 @@ $(document).ready(function () {
                                             .ajax.reload(null, false);
                                     }
 
-                                    // OPTIONAL: reapply sort if you rely on it
                                     if (window.__reapplySort)
                                         window.__reapplySort();
                                 } catch (err) {
