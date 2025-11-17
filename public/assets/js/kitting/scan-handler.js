@@ -563,7 +563,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                         }
                                     }
 
-                                    // Update search DataTable rows (so user sees act_lot_size change immediately)
                                     if (
                                         $.fn.DataTable &&
                                         $.fn.DataTable.isDataTable(
@@ -589,7 +588,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                         });
                                         dt.draw(false);
                                     } else {
-                                        // fallback: reload table ajax if available
                                         if (
                                             typeof table !== "undefined" &&
                                             table &&
@@ -738,7 +736,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Helper: baca current PO dari DOM (#infoContainer)
     function getCurrentPOFromDOM() {
         const arr = [];
         $("#infoContainer .row").each(function () {
