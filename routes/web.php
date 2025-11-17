@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FG\CheckSheetController;
 use App\Http\Controllers\IT\UsersController;
 use App\Http\Controllers\KittingController;
 use App\Http\Controllers\OpKittingController;
@@ -50,8 +51,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/record_material/store-mismatch', [OpKittingController::class, 'saveMismatch'])->name('record-material.saveMismatch');
     Route::post('/record_material/check-batch', [OpKittingController::class, 'checkBatch'])->name('record-material.check-batch');
     Route::get('/record-material/history', [OpKittingController::class, 'getBatchHistory']);
+    Route::post('/record_material/save-record', [OpKittingController::class, 'saveRecord'])->name('record-material.save-record');
     Route::post('/record_material/delete-po', [OpKittingController::class, 'deletePO']);
-    Route::put('/op-kitting/update-info', [OpKittingController::class, 'updateInfo'])->name('op-kitting.update-info');
+    Route::post('/record_material/update-info', [OpKittingController::class, 'updateInfo'])->name('record_material.update_info');
     Route::match(['GET', 'POST'], '/reports/kitting', [ReportsKittingController::class, 'index'])->name('reports.kitting');
     Route::post('/reports-kitting/material_lines', [ReportsKittingController::class, 'materials'])->name('reports.kitting.materials');
     Route::post('/reports-kitting/export', [ReportsKittingController::class, 'export'])
@@ -59,10 +61,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/batches', [ReportsKittingController::class, 'batches'])->name('reports.kitting.batches');
     Route::get('/reports/batches/export', [ReportsKittingController::class, 'exportBatches'])
         ->name('reports.batches.export');
+    Route::get('/reports/batches/suggest/po', [ReportsKittingController::class, 'suggestPo'])->name('reports.batches.suggest.po');
+    Route::get('/reports/batches/suggest/model', [ReportsKittingController::class, 'suggestModel'])->name('reports.batches.suggest.model');
+    Route::get('/reports/batches/suggest/line', [ReportsKittingController::class, 'suggestLine'])->name('reports.batches.suggest.line');
+    Route::get('/reports/kitting/suggest/batch', [ReportsKittingController::class, 'suggestBatch'])->name('reports.batches.suggest.batch');
 
+    // Route for FG
+    Route::get('/fg/cheksheet', [CheckSheetController::class, 'index'])->name('fg.checksheet.index');
 
     // ROUTE FOR IT
-    Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+    Route::resource('users', UsersController::class)->only(['index', 'show', 'update']);
 });
 
 Route::get('/sync-employees', function () {
@@ -97,6 +105,3 @@ Route::get('/sync-employees', function () {
     }
     return 'Employees synced successfully!';
 });
-
-Route::get('/upload', [PriceController::class, 'index']);
-Route::post('/upload-file', [PriceController::class, 'upload'])->name('upload-price');

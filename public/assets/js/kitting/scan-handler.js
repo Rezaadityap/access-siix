@@ -37,17 +37,30 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // NEW: helper cek duplikat DB (dipakai saat scan & saat submit)
+    // helper cek duplikat DB (dipakai saat scan & saat submit)
     async function checkDBDuplicates(batches, type, csrf) {
         if (!batches?.length) return new Set();
+
         try {
+            const currentPO = getCurrentPOFromDOM();
+            const po_numbers = currentPO.map((p) => p.po_number);
+            const group_id = currentPO[0]?.group_id ?? null;
+
             const res = await $.post("/record_material/check-batch", {
                 _token: csrf,
                 batches,
                 type,
+                po_numbers,
+                group_id,
             });
+
             if (res.status === "success") {
-                return new Set(res.duplicates || []);
+                // normalisasi server response: trim semua values
+                return new Set(
+                    (res.duplicates || []).map((d) =>
+                        (d || "").toString().trim()
+                    )
+                );
             }
         } catch (e) {
             console.warn("checkDBDuplicates error:", e);
@@ -63,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
         type,
         submitUrl,
     }) {
-        // --- safety checks & element resolution ---
+        // Safety checks
         let scannedData = [];
         const $tbody = document.getElementById(tableBodyId);
         const $input = document.getElementById(inputId);
@@ -89,7 +102,6 @@ document.addEventListener("DOMContentLoaded", function () {
             console.warn(
                 `[initScanHandler] modal "${modalId}" not found — continuing but modal events will be skipped.`
             );
-            // we continue because submit button might still exist (some pages have modal elsewhere)
         }
         if (!$submitBtn) {
             console.warn(
@@ -97,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
             );
         }
 
-        // cache untuk deteksi duplikat di sesi ini (cepat)
+        // cache untuk deteksi duplikat di sesi
         const SessionBatchSet = new Set();
 
         function parseScanCode(scanText) {
@@ -146,9 +158,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        // ENTER handler: sekarang async, validasi lokal + cek duplikat DB sekali
-        // --- REPLACEMENT: input handling (Enter / input / paste) ---
-        // central processing function (reused by keydown, input, paste)
         async function processScannedText(rawText) {
             const raw = (rawText || "").trim();
             if (!raw) return;
@@ -176,7 +185,11 @@ document.addEventListener("DOMContentLoaded", function () {
             let added = 0,
                 skippedDupSession = 0,
                 skippedMaterial = 0,
-                skippedDupDB = 0;
+                skippedDupDB = 0,
+                skippedDupWithinInput = 0;
+
+            // local set untuk mencegah duplikat yang muncul multiple di dalam payload yang sama
+            const localBatchSet = new Set();
 
             // kumpulkan kandidat yang lolos validasi lokal dulu
             const candidates = [];
@@ -184,11 +197,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 const parsed = parseScanCode(codeStr);
                 if (!parsed) continue;
 
-                // duplikat di sesi (kecuali MAR boleh duplikat)
-                if (type !== "MAR" && SessionBatchSet.has(parsed.batch)) {
+                if (SessionBatchSet.has(parsed.batch)) {
                     skippedDupSession++;
                     continue;
                 }
+
+                if (localBatchSet.has(parsed.batch)) {
+                    skippedDupWithinInput++;
+                    continue;
+                }
+
+                // tandai di local set (agar duplikat dalam payload tidak masuk)
+                localBatchSet.add(parsed.batch);
 
                 // ensure material cache loaded
                 if (!MaterialCache.set.size) {
@@ -233,11 +253,13 @@ document.addEventListener("DOMContentLoaded", function () {
             renderTable();
             const dt = (performance.now() - t0).toFixed(1);
             console.log(
-                `Scan processed: +${added}, dupSession:${skippedDupSession}, dupDB:${skippedDupDB}, notInPO:${skippedMaterial} in ${dt}ms`
+                `Scan processed: +${added}, dupSession:${skippedDupSession}, dupDB:${skippedDupDB}, notInPO:${skippedMaterial}, dupWithinInput:${skippedDupWithinInput} in ${dt}ms`
             );
 
-            // feedback ringan tanpa modal blocking
             const msg = [
+                skippedDupWithinInput
+                    ? `Skipped input duplicates: ${skippedDupWithinInput}`
+                    : null,
                 skippedDupSession
                     ? `Skipped session duplicates: ${skippedDupSession}`
                     : null,
@@ -259,7 +281,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // keydown: tetap tetap support Enter (legacy)
         $input.addEventListener("keydown", async function (e) {
             if (e.key !== "Enter") return;
             e.preventDefault();
@@ -269,14 +290,12 @@ document.addEventListener("DOMContentLoaded", function () {
             this.focus();
         });
 
-        // debounced input: proses otomatis saat pattern terpenuhi atau heuristik
         const inputDebounced = (function () {
             let t = null;
             return function () {
                 clearTimeout(t);
                 t = setTimeout(async () => {
                     const val = $input.value || "";
-                    // heuristik: jika ada pattern kode, atau panjang > 20 & mengandung '@', proses
                     const cleaned = val
                         .replace(/\r?\n|\r/g, " ")
                         .replace(/\s+/g, " ")
@@ -290,14 +309,12 @@ document.addEventListener("DOMContentLoaded", function () {
                         await processScannedText(cleaned);
                         $input.focus();
                     }
-                }, 120); // delay kecil supaya paste/typing selesai
+                }, 120);
             };
         })();
         $input.addEventListener("input", inputDebounced);
 
-        // paste: proses segera (scanner that pastes)
         $input.addEventListener("paste", function (e) {
-            // baca clipboard langsung jika tersedia
             const clipboardData = e.clipboardData || window.clipboardData;
             const pasted = clipboardData
                 ? clipboardData.getData("Text") || ""
@@ -340,7 +357,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // submit: tetap cek duplikat DB secara batch untuk jaga-jaga (idempotent)
         if ($submitBtn) {
             $(`#${submitBtnId}`).on("click", async function () {
                 if (!scannedData.length) {
@@ -397,17 +413,24 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                 }
 
-                // 1x call untuk cek seluruh batch di DB (safety net)
                 const batches = scannedData.map((s) => s.batch);
                 let duplicates = [];
                 try {
+                    const currentPO = getCurrentPOFromDOM();
+                    const po_numbers = (currentPO || [])
+                        .map((p) => p.po_number)
+                        .filter(Boolean);
                     const res = await $.post("/record_material/check-batch", {
                         _token: csrf,
                         batches,
                         type,
+                        po_numbers,
                     });
+
                     if (res.status === "success")
-                        duplicates = res.duplicates || [];
+                        duplicates = (res.duplicates || []).map((d) =>
+                            (d || "").toString().trim()
+                        );
                 } catch (e) {
                     return Swal.fire({
                         icon: "error",
@@ -418,9 +441,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 let payloadData = scannedData;
                 if (type !== "MAR" && duplicates.length) {
-                    const dupSet = new Set(duplicates);
+                    const dupSet = new Set(
+                        duplicates.map((d) => d.toString().trim())
+                    );
                     payloadData = scannedData.filter(
-                        (s) => !dupSet.has(s.batch)
+                        (s) => !dupSet.has((s.batch || "").toString().trim())
                     );
 
                     if (duplicates.length) {
@@ -478,27 +503,156 @@ document.addEventListener("DOMContentLoaded", function () {
                                     showConfirmButton: false,
                                 });
 
-                                const poNumbers = currentPO.map(
-                                    (p) => p.po_number
-                                );
-                                if (typeof loadHistoryData === "function")
-                                    loadHistoryData(poNumbers);
+                                try {
+                                    const currentPO = getCurrentPOFromDOM();
+                                    const poObjs = currentPO.map((p) => ({
+                                        po_number: p.po_number,
+                                        group_id: p.group_id ?? null,
+                                    }));
 
-                                // try to render saved PO lines
-                                if (poNumbers.length) {
+                                    if (
+                                        type === "MAR" &&
+                                        typeof actualLotSize !== "undefined" &&
+                                        actualLotSize != null
+                                    ) {
+                                        const $infoActual = $("#infoActual");
+                                        if ($infoActual.length)
+                                            $infoActual.val(actualLotSize);
+
+                                        // update data-act_lot_size di rows yang sesuai PO
+                                        $("#infoContainer .row").each(
+                                            function () {
+                                                const $r = $(this);
+                                                const po = $r
+                                                    .find("input")
+                                                    .eq(0)
+                                                    .val();
+                                                if (
+                                                    currentPO.some(
+                                                        (x) =>
+                                                            x.po_number === po
+                                                    )
+                                                ) {
+                                                    $r.attr(
+                                                        "data-act_lot_size",
+                                                        actualLotSize
+                                                    );
+                                                    $r.data(
+                                                        "act_lot_size",
+                                                        actualLotSize
+                                                    );
+                                                }
+                                            }
+                                        );
+
+                                        // re-render info fields jika fungsi tersedia
+                                        if (
+                                            typeof updateInfoFields ===
+                                            "function"
+                                        ) {
+                                            try {
+                                                updateInfoFields(
+                                                    getCurrentPOFromDOM()
+                                                );
+                                            } catch (e) {
+                                                console.warn(
+                                                    "updateInfoFields error after save:",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                    }
+
+                                    // Update search DataTable rows (so user sees act_lot_size change immediately)
+                                    if (
+                                        $.fn.DataTable &&
+                                        $.fn.DataTable.isDataTable(
+                                            "#searchRecords"
+                                        )
+                                    ) {
+                                        const dt =
+                                            $("#searchRecords").DataTable();
+                                        dt.rows().every(function () {
+                                            const rowData = this.data();
+                                            if (!rowData) return;
+                                            if (
+                                                currentPO.some(
+                                                    (p) =>
+                                                        p.po_number ===
+                                                        rowData.po_number
+                                                )
+                                            ) {
+                                                rowData.act_lot_size =
+                                                    actualLotSize;
+                                                this.data(rowData);
+                                            }
+                                        });
+                                        dt.draw(false);
+                                    } else {
+                                        // fallback: reload table ajax if available
+                                        if (
+                                            typeof table !== "undefined" &&
+                                            table &&
+                                            table.ajax
+                                        ) {
+                                            try {
+                                                table.ajax.reload(null, false);
+                                            } catch (e) {
+                                                console.warn(
+                                                    "Failed ajax.reload on searchRecords:",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                    }
+
+                                    // Refresh history view so recent lines appear immediately
+                                    if (typeof loadHistoryData === "function") {
+                                        try {
+                                            loadHistoryData(poObjs);
+                                        } catch (e) {
+                                            console.warn(
+                                                "loadHistoryData error after submit:",
+                                                e
+                                            );
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn(
+                                        "UI sync after save error:",
+                                        e
+                                    );
+                                }
+
+                                const poObjs = currentPO.map((p) => ({
+                                    po_number: p.po_number,
+                                    group_id: p.group_id ?? null,
+                                }));
+                                if (
+                                    typeof window.renderSavedPOFromList ===
+                                    "function"
+                                )
+                                    if (typeof loadHistoryData === "function") {
+                                        loadHistoryData(poObjs);
+                                    }
+                                window.renderSavedPOFromList(poObjs);
+
+                                if (poObjs.length) {
                                     try {
                                         await preloadMaterialsForPOs(
                                             currentPO,
                                             csrf
                                         );
-                                    } catch (err) {}
+                                    } catch (err) {
+                                        /* ignore */
+                                    }
                                     if (
                                         typeof window.renderSavedPOFromList ===
                                         "function"
                                     ) {
                                         try {
                                             window.renderSavedPOFromList(
-                                                poNumbers
+                                                poObjs
                                             );
                                         } catch (err) {
                                             console.error(
@@ -534,7 +688,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                 renderTable();
                                 if (modalEl) $(`#${modalId}`).modal("hide");
 
-                                // special MAR update: persist actual to localPO and re-render info
                                 if (type === "MAR") {
                                     if (document.getElementById("infoActual"))
                                         document.getElementById(
@@ -582,12 +735,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
                 });
             });
-        } // end if $submitBtn
-    } // end initScanHandler
+        }
+    }
 
-    // -------------------------
     // Helper: baca current PO dari DOM (#infoContainer)
-    // -------------------------
     function getCurrentPOFromDOM() {
         const arr = [];
         $("#infoContainer .row").each(function () {

@@ -322,11 +322,12 @@ class ReportsKittingController extends Controller
     public function batches(Request $request)
     {
         $po    = $request->query('po_number');
-
+        $model = $request->query('model');
+        $line  = $request->query('line');
         $start = $request->query('start_date');
         $end = $request->query('end_date');
+        $batch = $request->query('batch');
 
-        // ambil sources dari query (array), contoh ?sources[]=wh&sources[]=smd
         $sources = $request->query('sources', []);
 
         if (!is_array($sources) && $sources) {
@@ -338,18 +339,11 @@ class ReportsKittingController extends Controller
             $sources = $allSources;
         }
 
-        // helper untuk apply date range - (tidak dipakai langsung, tapi kept for reference)
         $applyDate = function ($q) use ($start, $end) {
             if ($start && $end) {
                 $q->whereBetween('created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             }
         };
-
-        /*
-     * NOTE:
-     * - diasumsikan setiap tabel batch punya kolom 'record_material_lines_id' yang mengarah ke record_material_lines.id
-     * - record_material_lines.record_material_trans_id -> record_material_trans.id, di situ ada po_number
-     */
 
         $qWh = DB::table('record_batch')
             ->leftJoin('record_material_lines as rml', 'record_batch.record_material_lines_id', '=', 'rml.id')
@@ -362,13 +356,24 @@ class ReportsKittingController extends Controller
                 'record_batch.created_at',
                 'record_batch.updated_at',
                 DB::raw("'wh' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch.batch_wh', 'like', "%{$batch}%");
             });
 
         $qSmd = DB::table('record_batch_smd')
@@ -382,13 +387,24 @@ class ReportsKittingController extends Controller
                 'record_batch_smd.created_at',
                 'record_batch_smd.updated_at',
                 DB::raw("'smd' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_smd.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_smd.batch_smd', 'like', "%{$batch}%");
             });
 
         $qSto = DB::table('record_batch_sto')
@@ -402,13 +418,24 @@ class ReportsKittingController extends Controller
                 'record_batch_sto.created_at',
                 'record_batch_sto.updated_at',
                 DB::raw("'sto' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_sto.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_sto.batch_sto', 'like', "%{$batch}%");
             });
 
         $qMar = DB::table('record_batch_mar')
@@ -422,13 +449,24 @@ class ReportsKittingController extends Controller
                 'record_batch_mar.created_at',
                 'record_batch_mar.updated_at',
                 DB::raw("'mar' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_mar.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_mar.batch_mar', 'like', "%{$batch}%");
             });
 
         $qMismatch = DB::table('record_batch_mismatch')
@@ -442,13 +480,24 @@ class ReportsKittingController extends Controller
                 'record_batch_mismatch.created_at',
                 'record_batch_mismatch.updated_at',
                 DB::raw("'mismatch' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_mismatch.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_mismatch.batch_mismatch', 'like', "%{$batch}%");
             });
 
         // pilih queries sesuai filter sumber
@@ -489,8 +538,11 @@ class ReportsKittingController extends Controller
     public function exportBatches(Request $request)
     {
         $po    = $request->query('po_number');
+        $model = $request->query('model');
+        $line  = $request->query('line');
         $start = $request->query('start_date');
         $end   = $request->query('end_date');
+        $batch = $request->query('batch');
 
         $sources = $request->query('sources', []);
         if (!is_array($sources) && $sources) {
@@ -499,7 +551,6 @@ class ReportsKittingController extends Controller
         $allSources = ['wh', 'smd', 'sto', 'mar', 'mismatch'];
         if (empty($sources)) $sources = $allSources;
 
-        // --- build queries (sama seperti di batches) ---
         $qWh = DB::table('record_batch')
             ->leftJoin('record_material_lines as rml', 'record_batch.record_material_lines_id', '=', 'rml.id')
             ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
@@ -509,14 +560,26 @@ class ReportsKittingController extends Controller
                 'record_batch.batch_wh_desc as description',
                 'record_batch.qty_batch_wh as qty',
                 'record_batch.created_at',
+                'record_batch.updated_at',
                 DB::raw("'wh' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch.batch_wh', 'like', "%{$batch}%");
             });
 
         $qSmd = DB::table('record_batch_smd')
@@ -528,14 +591,26 @@ class ReportsKittingController extends Controller
                 'record_batch_smd.batch_smd_desc as description',
                 'record_batch_smd.qty_batch_smd as qty',
                 'record_batch_smd.created_at',
+                'record_batch_smd.updated_at',
                 DB::raw("'smd' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_smd.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_smd.batch_smd', 'like', "%{$batch}%");
             });
 
         $qSto = DB::table('record_batch_sto')
@@ -547,14 +622,26 @@ class ReportsKittingController extends Controller
                 'record_batch_sto.batch_sto_desc as description',
                 'record_batch_sto.qty_batch_sto as qty',
                 'record_batch_sto.created_at',
+                'record_batch_sto.updated_at',
                 DB::raw("'sto' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_sto.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_sto.batch_sto', 'like', "%{$batch}%");
             });
 
         $qMar = DB::table('record_batch_mar')
@@ -566,14 +653,26 @@ class ReportsKittingController extends Controller
                 'record_batch_mar.batch_mar_desc as description',
                 'record_batch_mar.qty_batch_mar as qty',
                 'record_batch_mar.created_at',
+                'record_batch_mar.updated_at',
                 DB::raw("'mar' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_mar.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_mar.batch_mar', 'like', "%{$batch}%");
             });
 
         $qMismatch = DB::table('record_batch_mismatch')
@@ -585,14 +684,26 @@ class ReportsKittingController extends Controller
                 'record_batch_mismatch.batch_mismatch_desc as description',
                 'record_batch_mismatch.qty_batch_mismatch as qty',
                 'record_batch_mismatch.created_at',
+                'record_batch_mismatch.updated_at',
                 DB::raw("'mismatch' as source"),
-                'rmt.po_number as po_number'
+                'rmt.po_number as po_number',
+                'rmt.model as model',
+                'rmt.line as line'
             )
             ->when($start && $end, function ($q) use ($start, $end) {
                 $q->whereBetween('record_batch_mismatch.created_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
             })
             ->when($po, function ($q) use ($po) {
                 $q->where('rmt.po_number', 'like', "%{$po}%");
+            })
+            ->when($model, function ($q) use ($model) {
+                $q->where('rmt.model', 'like', "%{$model}%");
+            })
+            ->when($line, function ($q) use ($line) {
+                $q->where('rmt.line', 'like', "%{$line}%");
+            })
+            ->when($batch, function ($q) use ($batch) {
+                $q->where('record_batch_mismatch.batch_mismatch', 'like', "%{$batch}%");
             });
 
         // collect selected queries
@@ -620,12 +731,12 @@ class ReportsKittingController extends Controller
             }
         }
 
-        // --- Build spreadsheet ---
+        // Build spreadsheet
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headings
-        $headings = ['Po Number', 'Batch', 'Description', 'Qty', 'Source', 'Created At'];
+        $headings = ['Po Number', 'Model', 'Line', 'Batch', 'Description', 'Qty', 'Source', 'Created At'];
         $col = 'A';
         foreach ($headings as $i => $h) {
             $sheet->setCellValue($col . '1', $h);
@@ -636,16 +747,17 @@ class ReportsKittingController extends Controller
         $rowNum = 2;
         foreach ($rows as $r) {
             $sheet->setCellValue('A' . $rowNum, $r->po_number);
-            $sheet->setCellValue('B' . $rowNum, $r->batch);
-            $sheet->setCellValue('C' . $rowNum, $r->description);
-            $sheet->setCellValue('D' . $rowNum, $r->qty);
-            $sheet->setCellValue('E' . $rowNum, strtoupper($r->source));
-            $sheet->setCellValue('F' . $rowNum, (string) $r->created_at);
+            $sheet->setCellValue('B' . $rowNum, $r->model ?? '');
+            $sheet->setCellValue('C' . $rowNum, $r->line ?? '');
+            $sheet->setCellValue('D' . $rowNum, $r->batch);
+            $sheet->setCellValue('E' . $rowNum, $r->description);
+            $sheet->setCellValue('F' . $rowNum, $r->qty);
+            $sheet->setCellValue('G' . $rowNum, strtoupper($r->source));
+            $sheet->setCellValue('H' . $rowNum, (string) $r->created_at);
             $rowNum++;
         }
 
-        // Auto size columns (A..G)
-        foreach (range('A', 'F') as $columnID) {
+        foreach (range('A', 'H') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
 
@@ -653,12 +765,195 @@ class ReportsKittingController extends Controller
         $writer = new Xlsx($spreadsheet);
         $fileName = 'batches_' . now()->format('Ymd_His') . '.xlsx';
 
-        // Send headers and stream file
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
 
         $writer->save('php://output');
         exit;
+    }
+
+    public function suggestPo(Request $request)
+    {
+        $q = $request->query('q');
+        $limit = 20;
+
+        $q1 = DB::table('record_batch as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.po_number')
+            ->when($q, fn($qq) => $qq->where('rmt.po_number', 'like', "%{$q}%"));
+
+        $q2 = DB::table('record_batch_smd as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.po_number')
+            ->when($q, fn($qq) => $qq->where('rmt.po_number', 'like', "%{$q}%"));
+
+        $q3 = DB::table('record_batch_sto as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.po_number')
+            ->when($q, fn($qq) => $qq->where('rmt.po_number', 'like', "%{$q}%"));
+
+        $q4 = DB::table('record_batch_mar as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.po_number')
+            ->when($q, fn($qq) => $qq->where('rmt.po_number', 'like', "%{$q}%"));
+
+        $q5 = DB::table('record_batch_mismatch as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.po_number')
+            ->when($q, fn($qq) => $qq->where('rmt.po_number', 'like', "%{$q}%"));
+
+        $union = $q1->unionAll($q2)->unionAll($q3)->unionAll($q4)->unionAll($q5);
+
+        $rows = DB::table(DB::raw("({$union->toSql()}) as t"))
+            ->mergeBindings($union)
+            ->select('po_number')
+            ->whereNotNull('po_number')
+            ->groupBy('po_number')
+            ->limit($limit)
+            ->get();
+
+        $result = $rows->map(fn($r) => ['po_number' => $r->po_number, 'label' => $r->po_number]);
+
+        return response()->json($result);
+    }
+
+    public function suggestModel(Request $request)
+    {
+        $q = $request->query('q');
+        $limit = 20;
+
+        $q1 = DB::table('record_batch as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.model')
+            ->when($q, fn($qq) => $qq->where('rmt.model', 'like', "%{$q}%"));
+
+        $q2 = DB::table('record_batch_smd as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.model')
+            ->when($q, fn($qq) => $qq->where('rmt.model', 'like', "%{$q}%"));
+
+        $q3 = DB::table('record_batch_sto as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.model')
+            ->when($q, fn($qq) => $qq->where('rmt.model', 'like', "%{$q}%"));
+
+        $q4 = DB::table('record_batch_mar as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.model')
+            ->when($q, fn($qq) => $qq->where('rmt.model', 'like', "%{$q}%"));
+
+        $q5 = DB::table('record_batch_mismatch as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.model')
+            ->when($q, fn($qq) => $qq->where('rmt.model', 'like', "%{$q}%"));
+
+        $union = $q1->unionAll($q2)->unionAll($q3)->unionAll($q4)->unionAll($q5);
+
+        $rows = DB::table(DB::raw("({$union->toSql()}) as t"))
+            ->mergeBindings($union)
+            ->select('model')
+            ->whereNotNull('model')
+            ->groupBy('model')
+            ->limit($limit)
+            ->get();
+
+        $result = $rows->map(fn($r) => ['model' => $r->model, 'label' => $r->model]);
+
+        return response()->json($result);
+    }
+
+    public function suggestLine(Request $request)
+    {
+        $q = $request->query('q');
+        $limit = 20;
+
+        $q1 = DB::table('record_batch as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.line')
+            ->when($q, fn($qq) => $qq->where('rmt.line', 'like', "%{$q}%"));
+
+        $q2 = DB::table('record_batch_smd as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.line')
+            ->when($q, fn($qq) => $qq->where('rmt.line', 'like', "%{$q}%"));
+
+        $q3 = DB::table('record_batch_sto as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.line')
+            ->when($q, fn($qq) => $qq->where('rmt.line', 'like', "%{$q}%"));
+
+        $q4 = DB::table('record_batch_mar as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.line')
+            ->when($q, fn($qq) => $qq->where('rmt.line', 'like', "%{$q}%"));
+
+        $q5 = DB::table('record_batch_mismatch as rb')
+            ->leftJoin('record_material_lines as rml', 'rb.record_material_lines_id', '=', 'rml.id')
+            ->leftJoin('record_material_trans as rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
+            ->select('rmt.line')
+            ->when($q, fn($qq) => $qq->where('rmt.line', 'like', "%{$q}%"));
+
+        $union = $q1->unionAll($q2)->unionAll($q3)->unionAll($q4)->unionAll($q5);
+
+        $rows = DB::table(DB::raw("({$union->toSql()}) as t"))
+            ->mergeBindings($union)
+            ->select('line')
+            ->whereNotNull('line')
+            ->groupBy('line')
+            ->limit($limit)
+            ->get();
+
+        $result = $rows->map(fn($r) => ['line' => $r->line, 'label' => $r->line]);
+
+        return response()->json($result);
+    }
+
+    public function suggestBatch(Request $request)
+    {
+        $q = $request->query('q');
+        $limit = 30;
+
+        $q1 = DB::table('record_batch')->select(DB::raw('batch_wh as batch'))
+            ->when($q, fn($qq) => $qq->where('batch_wh', 'like', "%{$q}%"));
+
+        $q2 = DB::table('record_batch_smd')->select(DB::raw('batch_smd as batch'))
+            ->when($q, fn($qq) => $qq->where('batch_smd', 'like', "%{$q}%"));
+
+        $q3 = DB::table('record_batch_sto')->select(DB::raw('batch_sto as batch'))
+            ->when($q, fn($qq) => $qq->where('batch_sto', 'like', "%{$q}%"));
+
+        $q4 = DB::table('record_batch_mar')->select(DB::raw('batch_mar as batch'))
+            ->when($q, fn($qq) => $qq->where('batch_mar', 'like', "%{$q}%"));
+
+        $q5 = DB::table('record_batch_mismatch')->select(DB::raw('batch_mismatch as batch'))
+            ->when($q, fn($qq) => $qq->where('batch_mismatch', 'like', "%{$q}%"));
+
+        $union = $q1->unionAll($q2)->unionAll($q3)->unionAll($q4)->unionAll($q5);
+
+        $rows = DB::table(DB::raw("({$union->toSql()}) as t"))
+            ->mergeBindings($union)
+            ->select(DB::raw('DISTINCT batch'))
+            ->whereNotNull('batch')
+            ->limit($limit)
+            ->get();
+
+        $result = $rows->map(fn($r) => ['batch' => $r->batch, 'label' => $r->batch]);
+
+        return response()->json($result);
     }
 }
