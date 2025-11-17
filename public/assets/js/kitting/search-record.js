@@ -40,7 +40,14 @@ $(document).ready(function () {
         const existingPOs = existing.map((p) => p.po_number);
         polist.forEach((p, idx) => {
             if (!p || !p.po_number) return;
-            if (existingPOs.includes(p.po_number)) return;
+            if (
+                existing.some(
+                    (e) =>
+                        e.po_number === p.po_number &&
+                        String(e.group_id) === String(p.group_id)
+                )
+            )
+                return;
 
             const checkerNameSafe = (p.checker_name ?? p.checker ?? "-")
                 .toString()
@@ -124,25 +131,55 @@ $(document).ready(function () {
         });
     }
 
-    // Remove PO by po_number from DOM
-    function removePOFromDOM(po_number) {
+    function removePOFromDOM(po_number, group_id) {
         if (!po_number) return;
+
+        const targetPo = String(po_number);
+        const targetG =
+            group_id === undefined || group_id === null
+                ? null
+                : String(group_id);
+
         $("#infoContainer .row").each(function () {
-            const po = $(this).find("input").eq(0).val();
-            if (po === po_number) $(this).remove();
+            const po = $(this).find("input").eq(0).val() || "";
+            const gidAttr = $(this).data("group_id");
+            const gid =
+                gidAttr === undefined || gidAttr === null
+                    ? null
+                    : String(gidAttr);
+
+            if (po === targetPo) {
+                if (targetG === null || gid === targetG) {
+                    $(this).remove();
+                }
+            }
         });
     }
 
-    // Update buttons in the table row depending on whether PO exists in DOM
     function refreshTableButtons(table) {
-        let existing = getCurrentPOFromDOM();
-        const existingPOs = existing.map((p) => p.po_number);
+        const existing = getCurrentPOFromDOM();
         $("#searchRecords tbody tr").each(function () {
             const rowData = table.row(this).data();
             if (!rowData || !rowData.po_number) return;
+
             const btn = $(this).find(".btn-custom");
-            const poExist = existingPOs.includes(rowData.po_number);
-            if (poExist) {
+
+            const existsSameGroup = existing.some((e) => {
+                const eg =
+                    e.group_id === undefined || e.group_id === null
+                        ? ""
+                        : String(e.group_id);
+                const rg =
+                    rowData.group_id === undefined || rowData.group_id === null
+                        ? ""
+                        : String(rowData.group_id);
+                return (
+                    String(e.po_number) === String(rowData.po_number) &&
+                    eg === rg
+                );
+            });
+
+            if (existsSameGroup) {
                 btn.text("Cancel")
                     .removeClass("btn-primary")
                     .addClass("btn-danger");
@@ -209,11 +246,10 @@ $(document).ready(function () {
 
         if (!rowData || !rowData.po_number) return;
 
-        // If currently 'Cancel'
         if (btn.text().trim() === "Cancel") {
             Swal.fire({
                 title: "Cancel this PO?",
-                text: `PO ${rowData.po_number} will be removed.`,
+                text: `PO ${rowData.po_number} will be removed from the selected group.`,
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonText: "Yes, cancel it!",
@@ -221,7 +257,7 @@ $(document).ready(function () {
                 reverseButtons: true,
             }).then((result) => {
                 if (result.isConfirmed) {
-                    removePOFromDOM(rowData.po_number);
+                    removePOFromDOM(rowData.po_number, rowData.group_id);
 
                     const remaining = getCurrentPOFromDOM();
                     if (remaining.length > 0) {
@@ -235,22 +271,54 @@ $(document).ready(function () {
                         $("#recordMaterials tbody").html(
                             `<tr><td colspan="20" class="text-center text-muted">No Data Found</td></tr>`
                         );
+
+                        if (typeof loadHistoryData === "function") {
+                            try {
+                                loadHistoryData([]);
+                            } catch (e) {
+                                console.warn(
+                                    "loadHistoryData([]) error after cancel:",
+                                    e
+                                );
+                            }
+                        }
                     }
 
-                    // toggle button look
-                    btn.text("Select")
-                        .removeClass("btn-danger")
-                        .addClass("btn-primary");
+                    $("#searchRecords tbody tr").each(function () {
+                        const d = table.row(this).data();
+                        if (!d) return;
+                        const thisG =
+                            d.group_id === undefined || d.group_id === null
+                                ? null
+                                : String(d.group_id);
+                        const targetG =
+                            rowData.group_id === undefined ||
+                            rowData.group_id === null
+                                ? null
+                                : String(rowData.group_id);
+                        if (
+                            String(d.po_number) === String(rowData.po_number) &&
+                            thisG === targetG
+                        ) {
+                            const b = $(this).find(".btn-custom");
+                            b.text("Select")
+                                .removeClass("btn-danger")
+                                .addClass("btn-primary");
+                        }
+                    });
 
                     Swal.fire({
                         icon: "success",
                         title: "Cancelled!",
-                        text: `PO ${rowData.po_number} has been removed.`,
+                        text: `PO ${
+                            rowData.po_number
+                        } has been removed from group ${
+                            rowData.group_id || "-"
+                        }.`,
                         timer: 1200,
                         showConfirmButton: false,
                     });
 
-                    // refresh all buttons
                     refreshTableButtons(table);
                 }
             });
@@ -294,7 +362,6 @@ $(document).ready(function () {
             // update info fields first
             if (typeof updateInfoFields === "function") updateInfoFields(pos);
 
-            // --- NEW: render material lines for selected PO(s) ---
             const poNumbers = pos.map((p) => ({
                 po_number: p.po_number,
                 group_id: p.group_id,
@@ -551,7 +618,6 @@ $(document).ready(function () {
                 return;
             }
 
-            // Ambil data dari row pertama (atau bisa dari group ID tertentu)
             const $first = $rows.first();
             const groupId = $first.data("group_id") ?? "";
             const currentLine =
@@ -567,7 +633,6 @@ $(document).ready(function () {
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
         });
 
-        // submit perubahan
         $(document).on("submit", "#formEditInfo", function (e) {
             e.preventDefault();
 
@@ -584,7 +649,6 @@ $(document).ready(function () {
                 return;
             }
 
-            // optional confirm before save
             Swal.fire({
                 title: "Save changes?",
                 text: `Line → ${line}\nLot Size → ${lotSize}`,
@@ -614,7 +678,6 @@ $(document).ready(function () {
                                 document.getElementById("editInformation");
                             bootstrap.Modal.getInstance(modalEl)?.hide();
 
-                            // update DOM: semua row dengan group_id sama
                             $("#infoContainer .row").each(function () {
                                 const $r = $(this);
                                 if (
@@ -628,17 +691,55 @@ $(document).ready(function () {
                                 }
                             });
 
-                            // update top info inputs
                             $("#infoLine").val(line);
                             $("#infoLotSize").val(lotSize);
 
-                            // panggil updateInfoFields kalau diperlukan (re-render)
                             if (typeof updateInfoFields === "function") {
                                 try {
                                     updateInfoFields(getCurrentPOFromDOM());
                                 } catch (e) {
                                     /* ignore */
                                 }
+                            }
+
+                            try {
+                                if (
+                                    $.fn.DataTable &&
+                                    $.fn.DataTable.isDataTable("#searchRecords")
+                                ) {
+                                    const dt = $("#searchRecords").DataTable();
+                                    const infoActualVal =
+                                        $("#infoActual").val();
+                                    const rowsApi = dt.rows(function (
+                                        idx,
+                                        data,
+                                        node
+                                    ) {
+                                        return (
+                                            data &&
+                                            String(data.group_id) ===
+                                                String(groupId)
+                                        );
+                                    });
+
+                                    rowsApi.every(function () {
+                                        const d = this.data();
+                                        d.line = line;
+                                        d.lot_size = lotSize;
+                                        d.act_lot_size =
+                                            d.act_lot_size ||
+                                            infoActualVal ||
+                                            d.act_lot_size;
+                                        this.data(d);
+                                    });
+
+                                    dt.draw(false);
+                                }
+                            } catch (e) {
+                                console.warn(
+                                    "sync searchRecords after edit error:",
+                                    e
+                                );
                             }
 
                             Swal.fire({
@@ -679,7 +780,6 @@ $(document).ready(function () {
             .filter(Boolean)
             .filter((v, i, a) => a.indexOf(v) === i);
 
-        // Jika tidak ada data yang dipilih → jangan buka modal, langsung alert
         if (!groupIds.length) {
             Swal.fire({
                 icon: "info",
@@ -721,11 +821,31 @@ $(document).ready(function () {
                         }
 
                         try {
-                            if (window.table) {
-                                window.table.ajax.reload(null, false);
+                            if (
+                                $.fn.DataTable &&
+                                $.fn.DataTable.isDataTable("#searchRecords")
+                            ) {
+                                const dt = $("#searchRecords").DataTable();
+                                const idsSet = new Set(
+                                    groupIds.map((g) => String(g))
+                                );
+                                dt.rows(function (idx, data, node) {
+                                    return (
+                                        data &&
+                                        idsSet.has(String(data.group_id))
+                                    );
+                                }).remove();
+                                dt.draw(false);
+                            } else if (window.table && window.table.ajax) {
+                                try {
+                                    window.table.ajax.reload(null, false);
+                                } catch (e) {}
                             }
                         } catch (e) {
-                            console.warn("Failed refreshing search table:", e);
+                            console.warn(
+                                "sync searchRecords after delete error:",
+                                e
+                            );
                         }
 
                         Swal.fire({

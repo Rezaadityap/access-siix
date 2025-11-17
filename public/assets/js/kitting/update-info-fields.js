@@ -45,7 +45,13 @@ window.updateInfoFields = function (data) {
     newPOs.forEach((po) => {
         if (!po || !po.po_number) return;
 
-        if (!existingPOs.some((e) => e.po_number === po.po_number)) {
+        if (
+            !existingPOs.some(
+                (e) =>
+                    e.po_number === po.po_number &&
+                    String(e.group_id) === String(po.group_id)
+            )
+        ) {
             const checkerId = po.checker_id ?? po.user_id ?? po.checker ?? null;
             const checkerNameFromPayload = po.checker_name ?? null;
             const resolvedCheckerName =
@@ -119,7 +125,14 @@ window.updateInfoFields = function (data) {
         $("#infoContainer").append(infoRow);
     });
 
-    const base = newPOs[0] || existingPOs[0];
+    let base = null;
+    if (newPOs && newPOs.length) {
+        const firstNew = newPOs[0];
+        base =
+            existingPOs.find((e) => e.po_number === firstNew.po_number) ||
+            firstNew;
+    }
+    base = base || existingPOs[0];
 
     console.log("[updateInfoFields] Menampilkan PO:", base?.po_number);
 

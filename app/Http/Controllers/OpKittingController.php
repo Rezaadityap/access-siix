@@ -998,7 +998,6 @@ class OpKittingController extends Controller
                 DB::table('record_batch_smd')->whereIn('record_material_lines_id', $lineIds)->delete();
                 DB::table('record_batch_sto')->whereIn('record_material_lines_id', $lineIds)->delete();
                 DB::table('record_batch_mar')->whereIn('record_material_lines_id', $lineIds)->delete();
-                // jika ada mismatch table
                 if (Schema::hasTable('record_batch_mismatch')) {
                     DB::table('record_batch_mismatch')->whereIn('record_material_lines_id', $lineIds)->delete();
                 }
@@ -1007,12 +1006,10 @@ class OpKittingController extends Controller
                 DB::table('record_material_lines')->whereIn('id', $lineIds)->delete();
             }
 
-            // Hapus trans headers
             DB::table('record_material_trans')->whereIn('id', $transIds)->delete();
 
             DB::commit();
 
-            // prepare list of deleted identifiers for response
             $deletedPOs = $transRows->pluck('po_number')->unique()->values()->all();
             $deletedGroups = $transRows->pluck('group_id')->unique()->values()->all();
 
@@ -1038,7 +1035,6 @@ class OpKittingController extends Controller
         $selectedModel = $request->get('model');
 
         $query = RecordMaterialTrans::whereDate('created_at', $date);
-
         $models = $query->distinct()->pluck('model');
 
         $record = collect();
