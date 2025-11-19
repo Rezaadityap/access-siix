@@ -16,7 +16,7 @@ class PriceImportService
         $sheet = $spreadsheet->getSheet(0);
 
         $highestColIndex = Coordinate::columnIndexFromString($sheet->getHighestColumn());
-        $norm = fn(string $s) => str_replace([' ', '_', '-'], '', strtolower(trim($s)));
+        $norm = fn(string $s) => str_replace(['', '_', '-'], '', strtolower(trim($s)));
 
         // Map header
         $headerMap = [];
@@ -47,22 +47,34 @@ class PriceImportService
             return ['status' => 'bad_header', 'message' => 'Header “Material”/“UnitPrice” tidak ditemukan', 'inserted' => 0, 'updated' => 0, 'details' => []];
         }
 
-        // Normalisasi angka
+        // Normalisasi angka (ganti dengan blok ini)
         $toNumber = function ($raw) {
             if ($raw === null) return null;
             $s = trim((string)$raw);
             if ($s === '' || $s === '-') return null;
 
+            // jika ada kedua simbol: anggap format "1.234,56" (dot = ribuan, comma = desimal)
             if (strpos($s, '.') !== false && strpos($s, ',') !== false) {
                 $s = str_replace('.', '', $s);
                 $s = str_replace(',', '.', $s);
                 return is_numeric($s) ? (float)$s : null;
             }
+
+            // jika hanya ada koma -> anggap koma = desimal (mis. "2,765" -> 2.765)
             if (strpos($s, ',') !== false) {
                 $s = str_replace(',', '.', $s);
                 return is_numeric($s) ? (float)$s : null;
             }
-            if (preg_match('/^\d{1,3}(\.\d{3})+$/', $s)) $s = str_replace('.', '', $s);
+
+            if (strpos($s, '.') !== false && strpos($s, ',') === false) {
+                if (preg_match('/^\d{1,3}(\.\d{3}){2,}$/', $s)) {
+                    // contoh: 1.234.567 -> hapus titik jadi 1234567
+                    $s = str_replace('.', '', $s);
+                    return is_numeric($s) ? (float)$s : null;
+                }
+            }
+
+            // fallback: jika sudah numeric (mis. "1234" atau "2.5")
             return is_numeric($s) ? (float)$s : null;
         };
 
@@ -102,7 +114,7 @@ class PriceImportService
                 $numeric = $rows->filter(fn($r) => is_numeric($r['unit_price']));
                 return $numeric->isNotEmpty()
                     ? $numeric->sortByDesc('unit_price')->first()
-                    : $rows->first(); // fallback kalau semua N/A
+                    : $rows->first();
             })
             ->values();
 
@@ -113,7 +125,7 @@ class PriceImportService
         $payload = $grouped->map(function ($r) use ($now) {
             return [
                 'material'   => $r['material'],
-                'unit_price' => is_numeric($r['unit_price']) ? round($r['unit_price'], 2) : null,
+                'unit_price' => is_numeric($r['unit_price']) ? (float) number_format((float)$r['unit_price'], 2, '.', '') : null,
                 'updated_at' => $now,
                 'created_at' => $now,
             ];
@@ -134,9 +146,14 @@ class PriceImportService
         foreach ($payload as $row) {
             $isUpdate = $existing->has(strtolower($row['material']));
             $isUpdate ? $updated++ : $inserted++;
+
+            $display = is_numeric($row['unit_price'])
+                ? number_format((float)$row['unit_price'], 2, '.', '')
+                : null;
+
             $details[] = [
                 'material'   => $row['material'],
-                'unit_price' => $row['unit_price'],
+                'unit_price' => $display,
                 'status'     => $isUpdate ? 'updated' : 'inserted',
             ];
         }
