@@ -73,7 +73,6 @@ $(document).ready(function () {
                         return;
                     }
 
-                    // normalisasi key: gabungkan po_number + '::' + model, lowercase untuk case-insensitive
                     const key = `${po_number}::${model}`.toLowerCase();
 
                     const exists = uploadedFiles.some((f) => {

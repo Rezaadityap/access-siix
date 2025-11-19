@@ -1,3 +1,115 @@
+function invalidateRenderSavedCacheFor(poList) {
+    if (!poList) return;
+    if (!Array.isArray(poList)) poList = [poList];
+
+    const normalized = poList
+        .map((p) => {
+            if (typeof p === "string") return { po_number: p, group_id: null };
+            return {
+                po_number: p.po_number,
+                group_id: p.group_id ?? p.groupId ?? null,
+            };
+        })
+        .filter((p) => p.po_number);
+
+    if (!normalized.length) return;
+
+    try {
+        const cache = window.__renderSavedCache;
+        if (cache && typeof cache.delete === "function") {
+            normalized.forEach((p) => {
+                const key = `${p.po_number}::${p.group_id ?? ""}`;
+                if (cache.has(key)) {
+                    cache.delete(key);
+                    console.log(
+                        "[invalidateRenderSavedCache] deleted cache key:",
+                        key
+                    );
+                }
+            });
+        } else if (cache && typeof cache === "object") {
+            // fallback for object-shaped cache
+            Object.keys(cache).forEach((k) => {
+                normalized.forEach((p) => {
+                    if (k === `${p.po_number}::${p.group_id ?? ""}`) {
+                        try {
+                            delete cache[k];
+                        } catch (e) {
+                            cache[k] = undefined;
+                        }
+                        console.log(
+                            "[invalidateRenderSavedCache] deleted cache key (obj):",
+                            k
+                        );
+                    }
+                });
+            });
+        }
+    } catch (e) {
+        console.warn("invalidateRenderSavedCache error (cache):", e);
+    }
+
+    try {
+        const inflight = window.__renderSavedInFlight;
+        if (!inflight) return;
+
+        if (
+            inflight &&
+            typeof inflight === "object" &&
+            !("size" in inflight && typeof inflight.delete === "function")
+        ) {
+            Object.keys(inflight).forEach((sig) => {
+                normalized.forEach((p) => {
+                    if (sig && String(sig).indexOf(p.po_number) !== -1) {
+                        try {
+                            delete inflight[sig];
+                        } catch (e) {
+                            inflight[sig] = false;
+                        }
+                        console.log(
+                            "[invalidateRenderSavedCache] cleared in-flight sig:",
+                            sig
+                        );
+                    }
+                });
+            });
+        } else if (inflight && typeof inflight.has === "function") {
+            Array.from(inflight).forEach((entry) => {
+                normalized.forEach((p) => {
+                    if (String(entry).indexOf(p.po_number) !== -1) {
+                        try {
+                            inflight.delete(entry);
+                        } catch (e) {}
+                        console.log(
+                            "[invalidateRenderSavedCache] deleted in-flight entry:",
+                            entry
+                        );
+                    }
+                });
+            });
+        } else if (inflight && typeof inflight.delete === "function") {
+            try {
+                Array.from(inflight.keys()).forEach((k) => {
+                    normalized.forEach((p) => {
+                        if (String(k).indexOf(p.po_number) !== -1) {
+                            try {
+                                inflight.delete(k);
+                            } catch (e) {}
+                            console.log(
+                                "[invalidateRenderSavedCache] deleted in-flight key (map):",
+                                k
+                            );
+                        }
+                    });
+                });
+            } catch (e) {}
+        }
+    } catch (e) {
+        console.warn("invalidateRenderSavedCache error (inflight):", e);
+    }
+}
+window.invalidateRenderSavedCacheFor = invalidateRenderSavedCacheFor;
+
 function renderSavedPOFromList(poList) {
     console.log("%c[renderSavedPOFromList] → Dipanggil", "color:lightgreen;", {
         poList,
@@ -46,7 +158,6 @@ function renderSavedPOFromList(poList) {
                 group_id: p.group_id ?? null,
             });
         } else {
-            // prefer specific group_id
             const exG = existing.group_id;
             const newG = p.group_id ?? null;
             const exEmpty = exG === null || exG === "" || exG === undefined;
@@ -64,7 +175,6 @@ function renderSavedPOFromList(poList) {
         clearTimeout(window.__renderSavedBufferTimeout);
     }
 
-    // debounce a bit longer to merge bursts (120ms)
     window.__renderSavedBufferTimeout = setTimeout(async () => {
         const toFetchList = Array.from(window.__renderSavedBuffer.values());
         window.__renderSavedBuffer.clear();
@@ -91,7 +201,6 @@ function renderSavedPOFromList(poList) {
         const fetchedKeys = new Set();
 
         try {
-            // Helper: fetch single PO but use cache if exists
             async function fetchPO(po) {
                 const key = `${po.po_number}::${po.group_id ?? ""}`;
                 if (window.__renderSavedCache.has(key)) {

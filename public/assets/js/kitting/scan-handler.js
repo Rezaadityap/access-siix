@@ -630,9 +630,28 @@ document.addEventListener("DOMContentLoaded", function () {
                                     typeof window.renderSavedPOFromList ===
                                     "function"
                                 )
-                                    if (typeof loadHistoryData === "function") {
-                                        loadHistoryData(poObjs);
+                                    // --- invalidate cache minimal sebelum re-render ---
+                                    try {
+                                        if (poObjs && poObjs.length) {
+                                            invalidateRenderSavedCacheFor(
+                                                poObjs
+                                            );
+                                        }
+                                    } catch (e) {
+                                        console.warn(
+                                            "Failed to invalidate renderSaved cache:",
+                                            e
+                                        );
                                     }
+
+                                // lalu panggil seperti biasa (tidak diubah)
+                                if (typeof loadHistoryData === "function") {
+                                    try {
+                                        await loadHistoryData(poObjs);
+                                    } catch (err) {
+                                        /* ignore */
+                                    }
+                                }
                                 window.renderSavedPOFromList(poObjs);
 
                                 if (poObjs.length) {

@@ -6,11 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class RecordBatch extends Model
 {
-    protected $table = ['record_batch'];
+    protected $table = 'record_batch';
 
     protected $fillable =  [
         'batch_wh',
         'batch_wh_desc',
-        'qty_batch_wh'
+        'qty_batch_wh',
+        'status',
+        'remarks'
     ];
+    public function recordMaterialLine()
+    {
+        return $this->belongsTo(RecordMaterialLines::class, 'record_material_lines_id');
+    }
 }

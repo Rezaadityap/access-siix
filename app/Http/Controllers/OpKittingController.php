@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\RecordBatch;
+use App\Models\RecordBatchMar;
+use App\Models\RecordBatchMismatch;
+use App\Models\RecordBatchSmd;
+use App\Models\RecordBatchSto;
 use App\Models\RecordMaterialLines;
 use App\Models\RecordMaterialTrans;
 use Carbon\Carbon;
@@ -742,9 +747,15 @@ class OpKittingController extends Controller
                             'updated_at' => now()
                         ];
 
-                        $affected = DB::table('record_material_trans')
-                            ->whereIn('po_number', $poNumbers)
-                            ->update($updateData);
+                        if (!empty($group_ids)) {
+                            $affected = DB::table('record_material_trans')
+                                ->whereIn('group_id', $group_ids)
+                                ->update($updateData);
+                        } else {
+                            $affected = DB::table('record_material_trans')
+                                ->whereIn('po_number', $poNumbers)
+                                ->update($updateData);
+                        }
 
                         Log::info('saveAfter(): act_lot_size updated in record_material_trans', [
                             'po_numbers' => $poNumbers,
@@ -755,17 +766,21 @@ class OpKittingController extends Controller
                         ]);
 
                         if ($affected === 0) {
-                            $exists = DB::table('record_material_trans')
-                                ->whereIn('po_number', $poNumbers)
-                                ->count();
+                            $existsQuery = DB::table('record_material_trans');
+                            if (!empty($group_ids)) {
+                                $existsQuery->whereIn('group_id', $group_ids);
+                            } else {
+                                $existsQuery->whereIn('po_number', $poNumbers);
+                            }
+                            $exists = $existsQuery->count();
 
                             Log::warning('saveAfter(): act_lot_size not updated in record_material_trans', [
                                 'po_numbers' => $poNumbers,
+                                'group_ids'  => $group_ids,
                                 'found_count' => $exists,
                             ]);
                         }
                     }
-
                     $savedCount++;
                 } else {
                     Log::warning('saveAfter(): No matching record line found for material', [
@@ -1033,19 +1048,101 @@ class OpKittingController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
         $selectedModel = $request->get('model');
+        $selectedPo = $request->get('po');
 
         $query = RecordMaterialTrans::whereDate('created_at', $date);
         $models = $query->distinct()->pluck('model');
 
-        $record = collect();
+        $poNumbers = collect();
         if ($selectedModel) {
-            $record = RecordMaterialLines::whereHas('recordMaterialTrans', function ($q) use ($date, $selectedModel) {
-                $q->whereDate('created_at', $date)
-                    ->where('model', $selectedModel);
-            })->with('recordMaterialTrans')->get();
+            $poNumbers = RecordMaterialTrans::whereDate('created_at', $date)
+                ->where('model', $selectedModel)
+                ->distinct()
+                ->pluck('po_number');
         }
 
-        return view('history-record', compact('record', 'date', 'models', 'selectedModel'));
+        $record = collect();
+        $batches = collect();
+
+        if ($selectedModel) {
+            $recordQuery = RecordMaterialLines::whereHas('recordMaterialTrans', function ($q) use ($date, $selectedModel, $selectedPo) {
+                $q->whereDate('created_at', $date)
+                    ->where('model', $selectedModel);
+
+                if ($selectedPo) {
+                    $q->where('po_number', $selectedPo);
+                }
+            });
+
+            $record = $recordQuery->with([
+                'recordMaterialTrans',
+                'batchWh',
+                'batchSmd',
+                'batchSto',
+                'batchMar',
+                'batchMismatch'
+            ])->get();
+
+            $record->each(function ($line) use (&$batches) {
+                $po = optional($line->recordMaterialTrans)->po_number;
+                $common = [
+                    'record_line_id' => $line->id,
+                    'po_number' => $po,
+                    'material' => $line->material,
+                    'material_desc' => $line->material_desc,
+                    'po_item' => $line->po_item,
+                ];
+
+                // WH
+                if ($line->batchWh && $line->batchWh->isNotEmpty()) {
+                    $line->batchWh->each(function ($b) use (&$batches, $common) {
+                        $b->source = 'WH';
+                        foreach ($common as $k => $v) $b->{$k} = $v;
+                        $batches->push($b);
+                    });
+                }
+
+                // SMD
+                if ($line->batchSmd && $line->batchSmd->isNotEmpty()) {
+                    $line->batchSmd->each(function ($b) use (&$batches, $common) {
+                        $b->source = 'SMD';
+                        foreach ($common as $k => $v) $b->{$k} = $v;
+                        $batches->push($b);
+                    });
+                }
+
+                // STO
+                if ($line->batchSto && $line->batchSto->isNotEmpty()) {
+                    $line->batchSto->each(function ($b) use (&$batches, $common) {
+                        $b->source = 'STO';
+                        foreach ($common as $k => $v) $b->{$k} = $v;
+                        $batches->push($b);
+                    });
+                }
+
+                // MAR
+                if ($line->batchMar && $line->batchMar->isNotEmpty()) {
+                    $line->batchMar->each(function ($b) use (&$batches, $common) {
+                        $b->source = 'MAR';
+                        foreach ($common as $k => $v) $b->{$k} = $v;
+                        $batches->push($b);
+                    });
+                }
+
+                // Mismatch
+                if ($line->batchMismatch && $line->batchMismatch->isNotEmpty()) {
+                    $line->batchMismatch->each(function ($b) use (&$batches, $common) {
+                        $b->source = 'Mismatch';
+                        foreach ($common as $k => $v) $b->{$k} = $v;
+                        $batches->push($b);
+                    });
+                }
+            });
+
+            $batches = $batches->sortByDesc('created_at')->values();
+        }
+
+        return view('history-record', compact('record', 'date', 'models', 'selectedModel', 'poNumbers', 'selectedPo', 'batches'));
     }
 
     public function editHistory($id)
@@ -1090,6 +1187,97 @@ class OpKittingController extends Controller
             ]);
         });
     }
+    public function deleteBatch(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'batch_id'   => 'nullable|integer',
+            'batch_code' => 'nullable|string',
+            'source'     => 'required|string',
+            'remarks'    => 'required|string|max:255',
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
+        }
+
+        try {
+            $batchId   = $request->input('batch_id');
+            $batchCode = $request->input('batch_code');
+            $source    = strtoupper($request->input('source'));
+            $remarks   = $request->input('remarks');
+
+            $map = [
+                'WH'       => ['table' => 'record_batch',       'code_col' => 'batch_wh'],
+                'SMD'      => ['table' => 'record_batch_smd',      'code_col' => 'batch_smd'],
+                'STO'      => ['table' => 'record_batch_sto',      'code_col' => 'batch_sto'],
+                'MAR'      => ['table' => 'record_batch_mar',      'code_col' => 'batch_mar'],
+                'MISMATCH' => ['table' => 'record_batch_mismatch', 'code_col' => 'batch_mismatch'],
+            ];
+
+            if (! isset($map[$source])) {
+                return response()->json(['success' => false, 'message' => 'Invalid source'], 400);
+            }
+
+            $table = $map[$source]['table'];
+            $codeCol = $map[$source]['code_col'];
+
+            return DB::transaction(function () use ($batchId, $batchCode, $table, $codeCol, $source, $remarks) {
+                if ($batchId) {
+                    $existing = DB::table($table)->where('id', $batchId)->first();
+                } else {
+                    $existing = DB::table($table)
+                        ->where($codeCol, $batchCode)
+                        ->orderBy('id', 'asc')
+                        ->first();
+                }
+
+                if (! $existing) {
+                    return response()->json(['success' => false, 'message' => 'Batch not found'], 404);
+                }
+
+                $oldRemarks = $existing->remarks ?? '';
+                $newRemarks = trim(($oldRemarks ? $oldRemarks . ' | ' : '') . "Deleted ({$source}: " . ($existing->{$codeCol} ?? $batchCode) . ") - {$remarks}");
+
+                $affected = DB::table($table)
+                    ->where('id', $existing->id)
+                    ->update([
+                        'status' => 2,
+                        'remarks' => $newRemarks,
+                        'updated_at' => now(),
+                    ]);
+
+                if (! $affected) {
+                    return response()->json(['success' => false, 'message' => 'Failed to update batch'], 500);
+                }
+
+                $updated = DB::table($table)->where('id', $existing->id)->first();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Batch deleted successfully (batch marked as deleted).',
+                    'data' => [
+                        'batch_id' => $updated->id,
+                        'batch_code' => $updated->{$codeCol} ?? $batchCode,
+                        'source' => $source,
+                        'record_line_id' => $updated->record_material_lines_id ?? null,
+                        'status' => $updated->status ?? 2,
+                        'remarks' => $updated->remarks ?? $newRemarks,
+                    ],
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('deleteBatch error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal server error. See logs for details.',
+            ], 500);
+        }
+    }
+
     public function saveRecord(Request $request)
     {
         $groupIds = (array) $request->input('group_ids', []);

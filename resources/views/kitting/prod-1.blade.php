@@ -166,12 +166,13 @@
         {{-- Modal edit info --}}
         @include('modal.kitting.edit-information')
     </main>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ asset('assets/js/kitting/import-kitting.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/render-save-records.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/update-info-fields.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/scan-handler.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/search-record.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/history-load.js') }}" defer></script>
-    <script src="{{ asset('assets/js/kitting/collapse-button.js') }}" defer></script>
+    @push('script')
+        <script src="{{ asset('assets/js/kitting/import-kitting.js') }}" defer></script>
+        <script src="{{ asset('assets/js/kitting/render-save-records.js') }}" defer></script>
+        <script src="{{ asset('assets/js/kitting/update-info-fields.js') }}" defer></script>
+        <script src="{{ asset('assets/js/kitting/scan-handler.js') }}" defer></script>
+        <script src="{{ asset('assets/js/kitting/search-record.js') }}" defer></script>
+        <script src="{{ asset('assets/js/kitting/history-load.js') }}" defer></script>
+        <script src="{{ asset('assets/js/kitting/collapse-button.js') }}" defer></script>
+    @endpush
 @endsection

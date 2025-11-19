@@ -51,6 +51,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/record_material/store-mismatch', [OpKittingController::class, 'saveMismatch'])->name('record-material.saveMismatch');
     Route::post('/record_material/check-batch', [OpKittingController::class, 'checkBatch'])->name('record-material.check-batch');
     Route::get('/record-material/history', [OpKittingController::class, 'getBatchHistory']);
+    Route::post('/record_material/history/batch/delete', [OpKittingController::class, 'deleteBatch'])->name('record-material.history.batch.delete');
     Route::post('/record_material/save-record', [OpKittingController::class, 'saveRecord'])->name('record-material.save-record');
     Route::post('/record_material/delete-po', [OpKittingController::class, 'deletePO']);
     Route::post('/record_material/update-info', [OpKittingController::class, 'updateInfo'])->name('record_material.update_info');

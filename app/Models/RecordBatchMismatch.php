@@ -4,14 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class RecordBatchSmd extends Model
+class RecordBatchMismatch extends Model
 {
-    protected $table = 'record_batch_smd';
+    protected $table = 'record_batch_mismatch';
 
     protected $fillable = [
-        'batch_smd',
-        'batch_smd_desc',
-        'qty_batch_smd',
+        'batch_mismatch',
+        'batch_mismatch_desc',
+        'qty_batch_mismatch',
         'status',
         'remarks'
     ];
