@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FG\CheckSheetController;
+use App\Http\Controllers\IT\AssetsController;
 use App\Http\Controllers\IT\UsersController;
 use App\Http\Controllers\KittingController;
 use App\Http\Controllers\OpKittingController;
@@ -72,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ROUTE FOR IT
     Route::resource('users', UsersController::class)->only(['index', 'show', 'update']);
+    Route::resource('assets-it', AssetsController::class);
 });
 
 Route::get('/sync-employees', function () {

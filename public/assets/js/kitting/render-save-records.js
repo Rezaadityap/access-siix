@@ -327,10 +327,10 @@ function renderSavedPOFromList(poList) {
             const groupedVals = Object.values(grouped);
             for (let i = 0; i < groupedVals.length; i++) {
                 const item = groupedVals[i];
-                const smdCount = Number(item.smd_scans) || 0;
+                // const smdCount = Number(item.smd_scans) || 0;
                 const whCount = Number(item.wh_scans) || 0;
                 const stoCount = Number(item.sto_scans) || 0;
-                const totalScan = smdCount + whCount + stoCount;
+                const totalScan = whCount + stoCount;
                 const accumulateScan =
                     (Number(item.smd_qty) || 0) +
                     (Number(item.receive_qty) || 0) +
@@ -382,13 +382,14 @@ function renderSavedPOFromList(poList) {
                         <td>${
                             accumulateScan - rec_qty - mar_qty - totalScan
                         }</td>
-                <td>${
-                    (unit_price * rec_qty).toString().includes(".")
-                        ? (
-                              Math.floor(unit_price * rec_qty * 100) / 100
-                          ).toFixed(2)
-                        : unit_price * rec_qty
-                }</td>
+                        <td>$${
+                            (unit_price * rec_qty).toString().includes(".")
+                                ? (
+                                      Math.floor(unit_price * rec_qty * 100) /
+                                      100
+                                  ).toFixed(2)
+                                : unit_price * rec_qty
+                        }</td>
                         <td>${mm_qty}</td>
                     </tr>
                 `);

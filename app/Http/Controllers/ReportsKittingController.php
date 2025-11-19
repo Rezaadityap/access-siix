@@ -96,19 +96,31 @@ class ReportsKittingController extends Controller
             ->select('record_material_lines_id', DB::raw('SUM(qty_batch_wh) AS sum_wh'))
             ->groupBy('record_material_lines_id');
 
+        $qtyBatchWh = DB::table('record_batch')
+            ->select('record_material_lines_id', 'qty_batch_wh');
+
         $qSmd = DB::table('record_batch_smd')
             ->select('record_material_lines_id', DB::raw('SUM(qty_batch_smd) AS sum_smd'))
             ->groupBy('record_material_lines_id');
 
+        $qtyBatchSmd = DB::table('record_batch_smd')
+            ->select('record_material_lines_id', 'qty_batch_smd');
+
         $qSto = DB::table('record_batch_sto')
             ->select('record_material_lines_id', DB::raw('SUM(qty_batch_sto) AS sum_sto'))
             ->groupBy('record_material_lines_id');
+
+        $qtyBatchSto = DB::table('record_batch_sto')
+            ->select('record_material_lines_id', 'qty_batch_sto');
 
         $rows = DB::table('record_material_lines AS rml')
             ->join('record_material_trans AS rmt', 'rml.record_material_trans_id', '=', 'rmt.id')
             ->leftJoinSub($qWh,  'wh',  'wh.record_material_lines_id',  '=', 'rml.id')
             ->leftJoinSub($qSmd, 'smd', 'smd.record_material_lines_id', '=', 'rml.id')
             ->leftJoinSub($qSto, 'sto', 'sto.record_material_lines_id', '=', 'rml.id')
+            ->leftJoinsub($qtyBatchSmd, 'smd_qty', 'smd_qty.record_material_lines_id', '=', 'rml.id')
+            ->leftJoinsub($qtyBatchWh, 'wh_qty', 'wh_qty.record_material_lines_id', '=', 'rml.id')
+            ->leftJoinSub($qtyBatchSto, 'sto_qty', 'sto_qty.record_material_lines_id', '=', 'rml.id')
             ->leftJoin('prices as p', DB::raw('TRIM(rml.material)'), '=', DB::raw('TRIM(p.material)'))
             ->whereIn('rmt.group_id', $groupIds)
             ->orderBy('rmt.date')->orderBy('rmt.line')->orderBy('rmt.model')->orderBy('rmt.po_number')
@@ -122,6 +134,9 @@ class ReportsKittingController extends Controller
                 'rmt.change_model',
                 'rml.material AS item',
                 'rml.material_desc AS description',
+                'smd_qty.qty_batch_smd AS qty_smd',
+                'sto_qty.qty_batch_sto AS qty_sto',
+                'wh_qty.qty_batch_wh AS qty_wh',
                 DB::raw('COALESCE(wh.sum_wh,0)+COALESCE(smd.sum_smd,0)+COALESCE(sto.sum_sto,0) AS usage_total'),
                 DB::raw('COALESCE(p.unit_price,0) AS unit_price'),
                 DB::raw('( (COALESCE(wh.sum_wh,0)+COALESCE(smd.sum_smd,0)+COALESCE(sto.sum_sto,0)) * COALESCE(p.unit_price,0) ) AS amount'),
@@ -132,7 +147,7 @@ class ReportsKittingController extends Controller
               WHEN rmt.lot_size IS NULL OR rmt.lot_size = 0 THEN 0
               ELSE ROUND((rml.rec_qty / rmt.lot_size) * (rmt.cavity * rmt.change_model), 2)
             END AS qty_lcr
-        "),
+            "),
                 DB::raw("
             CASE
               WHEN LEFT(TRIM(rml.material),4)='1187' THEN 'Mitsuba'

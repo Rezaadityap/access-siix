@@ -139,10 +139,12 @@
                                     <th>Description</th>
                                     <th>Usage</th>
                                     <th>Unit Price</th>
-                                    <th>Total Qty</th>
+                                    <th>Qty Total</th>
                                     <th>Qty Lcr</th>
                                     <th>Amount Lcr</th>
-                                    <th>Qty loss</th>
+                                    <th>Qty Loss</th>
+                                    <th>Amount Loss</th>
+                                    <th>Percentage</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>

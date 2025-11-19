@@ -338,9 +338,9 @@ class OpKittingController extends Controller
                 'users.name as checker_name'
             );
 
-        if (Auth::user()->level_id === null) {
-            $query->where('record_material_trans.user_id', Auth::id());
-        }
+        // if (Auth::user()->level_id === null) {
+        //     $query->where('record_material_trans.user_id', Auth::id());
+        // }
 
         $startDate = $request->start_date ?: date('Y-m-d');
         $endDate = $request->end_date ?: date('Y-m-d');
