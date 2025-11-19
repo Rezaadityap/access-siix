@@ -11,6 +11,13 @@ class RecordBatchSto extends Model
     protected $fillable = [
         'batch_sto',
         'batch_sto_desc',
-        'qty_batch_sto'
+        'qty_batch_sto',
+        'status',
+        'remarks'
     ];
+
+    public function recordMaterialLine()
+    {
+        return $this->belongsTo(RecordMaterialLines::class, 'record_material_lines_id');
+    }
 }

@@ -30,4 +30,29 @@ class RecordMaterialLines extends Model
     {
         return $this->hasMany(PriceController::class, 'record_material_lines_id');
     }
+
+    public function batchWh()
+    {
+        return $this->hasMany(RecordBatch::class, 'record_material_lines_id');
+    }
+
+    public function batchSmd()
+    {
+        return $this->hasMany(RecordBatchSmd::class, 'record_material_lines_id');
+    }
+
+    public function batchSto()
+    {
+        return $this->hasMany(RecordBatchSto::class, 'record_material_lines_id');
+    }
+
+    public function batchMar()
+    {
+        return $this->hasMany(RecordBatchMar::class, 'record_material_lines_id');
+    }
+
+    public function batchMismatch()
+    {
+        return $this->hasMany(RecordBatchMismatch::class, 'record_material_lines_id');
+    }
 }
