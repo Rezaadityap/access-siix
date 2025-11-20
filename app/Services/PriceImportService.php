@@ -26,8 +26,8 @@ class PriceImportService
             if ($label !== '') $headerMap[$norm($label)] = $c;
         }
 
-        $materialKeys  = ['material', 'materialno', 'materialid', 'materialcode'];
-        $unitPriceKeys = ['UnitPrice', 'unit_price', 'price', 'unitharga', 'unitprc'];
+        $unitPriceKeys = array_map($norm, ['UnitPrice', 'unit_price', 'price', 'unitharga', 'unitprc']);
+        $materialKeys  = array_map($norm, ['material', 'materialno', 'materialid', 'materialcode']);
 
         $colMaterial = null;
         $colUnitPrice = null;

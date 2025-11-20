@@ -6,6 +6,7 @@
         <td>{{ $r->supplier }}</td>
         <td>{{ $r->model }}</td>
         <td>{{ $r->po_number }}</td>
+        <td>{{ $r->lot_size }}</td>
         <td>{{ $r->item }}</td>
         <td>{{ $r->description }}</td>
         <td>{{ $r->usage_total }}</td>

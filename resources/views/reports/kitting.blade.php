@@ -132,6 +132,7 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Line</th>
+                                    <th>Supplier</th>
                                     <th>Model</th>
                                     <th>PO</th>
                                     <th>Lot</th>
