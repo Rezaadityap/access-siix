@@ -38,7 +38,7 @@ class PriceImportMounted extends Command
 
             // Filter pastikan format dd-mm-yyyy_Result.xlsx
             $files = array_values(array_filter($files, function ($f) {
-                return preg_match('/[\\/\\\\]\d{2}-\d{2}-\d{4}_Result\.xlsx$/', $f);
+                return preg_match('/[\\/\\\\]\d{6}_Result\.xlsx$/', $f);
             }));
 
             if (empty($files)) {
